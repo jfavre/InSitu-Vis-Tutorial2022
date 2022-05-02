@@ -1,0 +1,24 @@
+# An example to triger I/O once every 1000 timesteps, restrict the variables being saved, and aggregate I/O to N files/step
+# https://ascent.readthedocs.io/en/latest/Actions/Examples.html#an-example-of-using-a-relay-extract-to-save-a-subset-of-the-data
+- 
+  action: add_triggers
+  triggers: 
+    t1: 
+      params: 
+        actions: 
+          - 
+            action: add_extracts
+            extracts: 
+              e1: 
+                params: 
+                  path: "/scratch/snx3000/jfavre/SPH-Exa-Ascent/evrard"
+                  protocol: "blueprint/mesh/hdf5"
+                  num_files: 1
+                  fields:
+                    - Density
+                    - Pressure
+                    - vx
+                    - vy
+                    - vz
+                type: relay
+        condition: "cycle() % 1000 == 0"

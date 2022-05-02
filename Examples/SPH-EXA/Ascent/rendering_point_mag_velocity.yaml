@@ -1,0 +1,39 @@
+
+# An example of rendering a point 
+# https://ascent.readthedocs.io/en/latest/Actions/Examples.html#an-example-if-using-the-composite-vector-filter-to-compose-three-scalar-fields-into-a-vector
+-
+  action: "add_pipelines"
+  pipelines:
+    pl1:
+      f1:
+        type: "composite_vector"
+        params:
+          field1: "vx"
+          field2: "vy"
+          field3: "vz"
+          output_name: "velocity"
+      f2:
+        type: "vector_magnitude"
+        params:
+          field: "velocity"
+          output_name: "velocity_mag"
+-
+  action: "add_scenes"
+  scenes:
+    s1:
+      plots:
+        p1:
+          type: "pseudocolor"
+          field: "velocity_mag"
+          pipeline: "pl1"
+          points:
+            radius: 0.001
+      renders: 
+        r1: 
+          image_width: 1024
+          image_height: 1024
+          image_prefix: "/scratch/snx3000/jfavre/SPH-Exa-Ascent/render_velocitymag.%05d"
+          camera: 
+            azimuth: 30
+            elevation: 11
+
