@@ -13,3 +13,4 @@ pip install ipykernel
 pip install wheel
 pip install cinemasci==1.5.4
 kernel-create -n myenv-kernel
+sed -i '7 a export PMI_NO_FORK=1\nexport PMI_NO_PREINITIALIZE=1\nexport PMI_MMAP_SYNC_WAIT_TIME=300\nmodule load FFmpeg Ascent' $HOME/.local/share/jupyter/kernels/myenv-kernel/launcher
