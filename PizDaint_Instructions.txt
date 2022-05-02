@@ -1,0 +1,15 @@
+Please follow: https://user.cscs.ch/tools/interactive/python/#python-virtual-environments
+Please follow: https://user.cscs.ch/tools/interactive/jupyterlab/#creating-jupyter-kernels-for-python
+
+Specifically, I have tested the following instructions to be applied on the first loggin
+
+module load daint-gpu
+module load cray-python
+module load jupyter-utils
+python -m venv --system-site-packages myvenv
+source ./myvenv/bin/activate
+~/myvenv/bin/python -m pip install --upgrade pip
+pip install ipykernel
+pip install wheel
+pip install cinemasci==1.5.4
+kernel-create -n myenv-kernel
