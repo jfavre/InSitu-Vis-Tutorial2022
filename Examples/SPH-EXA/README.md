@@ -2,4 +2,4 @@ SPH-EXA is a Smoothed Particle Hydrodynamics code in 3D. All details can be foun
 
 Source code can be found at https://github.com/unibas-dmi-hpc/SPH-EXA
 
-The simulation code has been instrumented with Ascent and with ParaView Catalyst. See the respective directories for examples.
+The simulation code has been instrumented with Ascent and with ParaView Catalyst. See the respective directories for examples. The application is compiled on Piz Daint according to the instructions in https://github.com/unibas-dmi-hpc/SPH-EXA/blob/develop/README.insitu
