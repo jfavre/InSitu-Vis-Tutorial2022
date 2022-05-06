@@ -18,6 +18,8 @@ export VTK_SILENCE_GET_VOID_POINTER_WARNINGS=1
 
 mkdir $SCRATCH/Lulesh
 cp buildAscent/bin/lulesh2.0 $SCRATCH/Lulesh
+# enable a custom scene description
+# cp ascent_actions.yaml trigger_ascent_actions.yaml  $SCRATCH/Lulesh
 pushd $SCRATCH/Lulesh
 srun ./lulesh2.0 -s 30 -p
 

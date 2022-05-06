@@ -51,6 +51,8 @@ void InitializeAscent()
 void ExecuteAscent(Domain& locDom)
 {
   conduit::Node mesh = locDom.visitNode();
+  mesh["state/cycle"].set(locDom.cycle());
+  mesh["state/time"].set(locDom.time());
   ascent.publish(mesh);
   ascent.execute(actions);
 }
