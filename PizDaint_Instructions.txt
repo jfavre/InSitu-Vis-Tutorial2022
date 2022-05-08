@@ -13,7 +13,12 @@ pip install ipykernel
 pip install wheel
 pip install cinemasci==1.5.4
 kernel-create -n myenv-kernel
-sed -i '7 a export PMI_NO_FORK=1\nexport PMI_NO_PREINITIALIZE=1\nexport PMI_MMAP_SYNC_WAIT_TIME=300\nmodule load FFmpeg Ascent' $HOME/.local/share/jupyter/kernels/myenv-kernel/launcher
+sed -i '7 a export PMI_NO_FORK=1'                                                                $HOME/.local/share/jupyter/kernels/myenv-kernel/launcher
+sed -i '8 a export PMI_NO_PREINITIALIZE=1'                                                       $HOME/.local/share/jupyter/kernels/myenv-kernel/launcher
+sed -i '9 a export PMI_MMAP_SYNC_WAIT_TIME=300'                                                  $HOME/.local/share/jupyter/kernels/myenv-kernel/launcher
+sed -i '10 a module load FFmpeg Ascent'                                                          $HOME/.local/share/jupyter/kernels/myenv-kernel/launcher
+sed -i '11 a module load Visit'                                                                  $HOME/.local/share/jupyter/kernels/myenv-kernel/launcher
+sed -i '12 a export PYTHONPATH=$PYTHONPATH:$EBROOTVISIT/current/linux-x86_64/lib/site-packages/' $HOME/.local/share/jupyter/kernels/myenv-kernel/launcher
 
 git clone https://github.com/jfavre/InSitu-Vis-Tutorial2022
 cd InSitu-Vis-Tutorial2022
