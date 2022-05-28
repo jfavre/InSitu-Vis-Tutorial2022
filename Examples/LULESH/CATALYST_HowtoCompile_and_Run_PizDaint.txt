@@ -18,6 +18,7 @@
 # Compile and run on Piz Daint
 
 module load daint-gpu CMake ParaView
+mkdir buildCatalyst
 cd buildCatalyst
 
 cmake \
