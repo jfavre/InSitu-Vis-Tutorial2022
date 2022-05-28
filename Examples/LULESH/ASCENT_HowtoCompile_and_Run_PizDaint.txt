@@ -18,12 +18,19 @@
 # Compile and run on Piz Daint
 
 module load daint-gpu CMake Ascent cray-hdf5-parallel
-cd buildAscent
-cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=CC -DINSITU=Ascent -DHDF5_INCLUDE_DIR=$CRAY_HDF5_PARALLEL_PREFIX/include ..
 
-make
+cd buildAscent
+cmake \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DCMAKE_CXX_COMPILER=CC \
+  -DINSITU=Ascent \
+  -DHDF5_INCLUDE_DIR=$CRAY_HDF5_PARALLEL_PREFIX/include \
+  ..
+
+make -j
 
 ##############################################################################
 # Run with Ascent
 
+cd Ascent
 sbatch run_lulesh_Ascent.sh

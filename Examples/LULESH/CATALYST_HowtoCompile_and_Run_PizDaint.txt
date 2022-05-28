@@ -31,9 +31,10 @@ make
 ##############################################################################
 # Run with a Catalyst script
 
-sbatch run_lulesh.sh
+cd Catalyst
+sbatch run_lulesh_catalyst.sh
 
-# What is happening? See the contents of script.py, the ParaView Catalyst script
+# What is happening? See the contents of catalyst.py, the ParaView Catalyst script
 
 Two extractors have been defined:
 
