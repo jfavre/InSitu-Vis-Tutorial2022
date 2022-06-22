@@ -84,9 +84,27 @@ class Simulation:
 # we now define a sub-class of Simulation to add a Conduit node and Ascent action
 
 class Simulation_With_Ascent(Simulation):
-    def __init__(self, resolution=64, iterations=100):
+    def __init__(self, resolution=64, iterations=100, meshtype="uniform"):
         Simulation.__init__(self, resolution, iterations)
-
+        self.MeshType = meshtype
+        if meshtype == "rectilinear":
+          self.xc = np.linspace(0, 1, self.xres + 2)
+          self.yc = np.linspace(0, 1, self.yres + 2)
+        else:
+          if meshtype == "structured" or meshtype == "unstructured":
+            self.xc, self.yc = np.meshgrid(np.linspace(0, 1, self.xres + 2),
+                                           np.linspace(0, 1, self.yres + 2),
+                                           indexing='xy')
+        if meshtype == "unstructured":
+          self.conn = np.zeros(((self.xres + 1) * (self.yres + 1) * 4), dtype=np.int32)
+          i=0
+          for iy in range(self.yres+1):
+            for ix in range(self.xres+1):
+              self.conn[4*i+0] = ix + iy*(self.xres + 2)
+              self.conn[4*i+1] = ix + (iy+1)*(self.xres + 2)
+              self.conn[4*i+2] = ix + (iy+1)*(self.xres + 2)+ 1
+              self.conn[4*i+3] = ix + iy*(self.xres + 2) + 1
+              i += 1
     # Add Ascent mesh definition
     def Initialize(self):
         Simulation.Initialize(self)
@@ -101,21 +119,33 @@ class Simulation_With_Ascent(Simulation):
         self.mesh = conduit.Node()
 
         # create the coordinate set
-        self.mesh["coordsets/coords/type"] = "uniform";
+        if self.MeshType == "structured" or self.MeshType == "unstructured":
+          self.mesh["coordsets/coords/type"] = "explicit"
+        else:
+          self.mesh["coordsets/coords/type"] = self.MeshType
+
         self.mesh["coordsets/coords/dims/i"] = self.xres + 2
         self.mesh["coordsets/coords/dims/j"] = self.yres + 2
-        
-        # add origin and spacing to the coordset (optional)
-        self.mesh["coordsets/coords/origin/x"] = 0.0
-        self.mesh["coordsets/coords/origin/y"] = 0.0
+        self.mesh["topologies/mesh/type"] = self.MeshType
+        self.mesh["topologies/mesh/coordset"] = "coords"
 
-        self.mesh["coordsets/coords/spacing/dx"] = self.dx
-        self.mesh["coordsets/coords/spacing/dy"] = self.dx
-        
-        # add the topology, implicitly derived from the coordinate set
-        self.mesh["topologies/mesh/type"] = "uniform";
-        self.mesh["topologies/mesh/coordset"] = "coords";
-        
+        if self.MeshType == "uniform":
+          # add origin and spacing to the coordset (optional)
+          self.mesh["coordsets/coords/origin/x"] = 0.0
+          self.mesh["coordsets/coords/origin/y"] = 0.0
+          self.mesh["coordsets/coords/spacing/dx"] = self.dx
+          self.mesh["coordsets/coords/spacing/dy"] = self.dx
+        else:
+          self.mesh["coordsets/coords/values/x"].set_external(self.xc.ravel())
+          self.mesh["coordsets/coords/values/y"].set_external(self.yc.ravel())
+
+        if self.MeshType == "structured":
+          self.mesh["topologies/mesh/elements/dims/i"] = np.int32(self.xres + 1)
+          self.mesh["topologies/mesh/elements/dims/j"] = np.int32(self.yres + 1)
+
+        if self.MeshType == "unstructured":
+          self.mesh["topologies/mesh/elements/shape"] = "quad"
+          self.mesh["topologies/mesh/elements/connectivity"].set_external(self.conn)
         # create a vertex associated field called "temperature"
         self.mesh["fields/temperature/association"] = "vertex";
         self.mesh["fields/temperature/topology"] = "mesh";
@@ -183,11 +213,12 @@ class Simulation_With_Ascent(Simulation):
           self.a.execute(self.actions)
 
 def main():
-    #sim = Simulation(resolution=64, iterations=500)
-    sim = Simulation_With_Ascent(resolution=64, iterations=500)
+    # sim = Simulation(resolution=64, iterations=500)
+    # choices are meshtype="uniform", "rectilinear", "structured", "unstructured"
+    sim = Simulation_With_Ascent(resolution=64-2, iterations=500, meshtype="unstructured")
     sim.Initialize()
     sim.MainLoop(frequency=100)
-    sim.Finalize(savedir="/scratch/snx3000/jfavre/TAscent/")
+    sim.Finalize(savedir="/mnt/data/")
     
 main()
 
