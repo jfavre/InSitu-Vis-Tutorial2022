@@ -1,0 +1,17 @@
+
+env PARAVIEW_LOG_CATALYST_VERBOSITY=INFO  ./bin/pjacobi_catalystV2 catalyst_state.py 
+
+rm /tmp/output-*png log; make && mpiexec -n 4 ./bin/pjacobi_catalystV2 catalyst_state.py --output datasets/dataset-%04ts.vtpd  &> log; eog /tmp/output-*png
+
+make && ./bin/pjacobi_catalystV2 --res=32 --mesh=uniform      catalyst_state.py
+make && ./bin/pjacobi_catalystV2 --res=32 --mesh=rectilinear  catalyst_state.py
+make && ./bin/pjacobi_catalystV2 --res=32 --mesh=structured   catalyst_state.py
+make && ./bin/pjacobi_catalystV2 --res=32 --mesh=unstructured catalyst_state.py
+
+Connect to Piz Daint:
+
+ssh -R 22222:localhost:22222  daint103.cscs.ch
+
+on Piz Daint, use the following in the Catalyst script:
+
+options.CatalystLiveURL = 'daint103:22222'
