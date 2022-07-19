@@ -25,9 +25,6 @@ JacobiDriver.cxx
 
 add_executable(pjacobi ${C_SRCS})
 target_link_libraries(pjacobi PRIVATE MPI::MPI_C MPI::MPI_CXX m)
-target_compile_definitions(pjacobi
-    PRIVATE
-      PARALLEL=1)
 
 option(USE_CATALYST "Use ParaView's Catalyst" ON)
 
@@ -42,7 +39,6 @@ if(INSITU_COUPLING)
   target_compile_definitions(pjacobi_catalystV2
     PRIVATE
       "PARAVIEW_IMPL_DIR=\"${ParaView_CATALYST_DIR}\""
-      PARALLEL=1
       USE_CATALYST=1)
   target_link_libraries(pjacobi_catalystV2 PRIVATE MPI::MPI_C MPI::MPI_CXX m catalyst::catalyst)
 

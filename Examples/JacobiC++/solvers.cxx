@@ -3,24 +3,16 @@
 #include <iostream>
 #include <math.h>
 
-#ifdef PARALLEL
 #include <mpi.h>
 MPI_Datatype rowtype, coltype;
-#endif
 
 #include "solvers.h"
 
 void SimInitialize(simulation_data *sim)
 {
-  sim->savingFiles = 0;
-  sim->saveCounter = 0;
-  sim->batch = 0;
-  sim->VTKexport = 0;
-  sim->sessionfile = NULL;
   sim->par_rank = 0;
   sim->par_size = 1;
 
-  sim->runMode = SIM_STOPPED;
   sim->bx = sim->by = sim->resolution;
   sim->local_extents[0] = 0;
   sim->local_extents[1] = sim->bx - 1;
@@ -31,13 +23,14 @@ void SimInitialize(simulation_data *sim)
 
   sim->gdel = 1.0;
   sim->iter = 0;
+  sim->cx = nullptr;
+  sim->cy = nullptr;
   sim->connectivity = nullptr;
   sim->explicit_cx = nullptr;
   sim->explicit_cy = nullptr;
   sim->explicit_cz = nullptr;
 }
 
-#ifdef PARALLEL
 void MPI_Partition(int PartitioningDimension, simulation_data *sim)
 {
   int coords[2];
@@ -83,7 +76,6 @@ void MPI_Partition(int PartitioningDimension, simulation_data *sim)
   MPI_Type_vector(sim->by, 1, sim->bx+2, MPI_DOUBLE, &coltype); // count, blocklength, stride,
   MPI_Type_commit(&coltype);
 }
-#endif
 
 void AllocateGridMemory(simulation_data *sim)
 {
@@ -94,25 +86,24 @@ void AllocateGridMemory(simulation_data *sim)
   sim->cx      = (float *)malloc(sizeof(float) * (sim->bx + 2));
   sim->cy      = (float *)malloc(sizeof(float) * (sim->by + 2));
 
-// set up rectilinear coordinates
   float hsize = 1.0/(sim->resolution+1.0);
 
   if((sim->mesh == "unstructured") || (sim->mesh == "structured"))
     {
     int i=0;
-    sim->explicit_cx = (float *)calloc((sim->bx + 2) * (sim->by + 2), sizeof(float));
-    sim->explicit_cy = (float *)calloc((sim->bx + 2) * (sim->by + 2), sizeof(float));
-    sim->explicit_cz = (float *)calloc((sim->bx + 2) * (sim->by + 2), sizeof(float));
-    memset(sim->explicit_cz, 0,  sizeof(float)*(sim->bx + 2) * (sim->by + 2));
+    sim->explicit_cx = (float *)malloc((sim->bx + 2) * (sim->by + 2) * sizeof(float));
+    sim->explicit_cy = (float *)malloc((sim->bx + 2) * (sim->by + 2) * sizeof(float));
+    sim->explicit_cz = (float *)calloc((sim->bx + 2) * (sim->by + 2), sizeof(float)); // fill with zeroes
     for(int iy=0; iy <= sim->by+1; iy++)
       for(int ix=0; ix <= sim->bx+1; ix++)
         {
-        sim->explicit_cx[i] = ix  * hsize;
-        sim->explicit_cy[i] = iy  * hsize;
+        sim->explicit_cx[i] = (ix + sim->rankx * sim->bx) * hsize;
+        sim->explicit_cy[i] = (iy + sim->ranky * sim->by) * hsize;
         i++;
         }
 /*
     std::cout << "###############################" << std::endl;
+    std::cout << "Explicit x, y and z coords of dim " << (sim->bx + 2) * (sim->by + 2) << std::endl;
     for(int d=0; d < (sim->bx + 2) * (sim->by + 2); d++)
     {
       std::cout << sim->explicit_cx[d] << " ";
@@ -129,33 +120,25 @@ void AllocateGridMemory(simulation_data *sim)
     
     if(sim->mesh == "unstructured")
     {
-    sim->connectivity = (int *)calloc(4 * (sim->bx + 1) * (sim->by + 1), sizeof(int));
-    int i=0;
+    sim->connectivity = (int *)malloc(4 * (sim->bx + 1) * (sim->by + 1) * sizeof(int));
+    auto i=0;
     for(int iy=0; iy <= sim->by; iy++)
        for(int ix=0; ix <= sim->bx; ix++)
           {
-          sim->connectivity[4*i+0] = ix + iy*(sim->bx + 2);
-          sim->connectivity[4*i+1] = ix + (iy+1)*(sim->bx + 2);
-          sim->connectivity[4*i+2] = ix + (iy+1)*(sim->bx + 2)+ 1;
-          sim->connectivity[4*i+3] = ix + iy*(sim->bx + 2) + 1;
-          i++;
+          sim->connectivity[i+0] = ix + iy*(sim->bx + 2);
+          sim->connectivity[i+1] = ix + (iy+1)*(sim->bx + 2);
+          sim->connectivity[i+2] = ix + (iy+1)*(sim->bx + 2)+ 1;
+          sim->connectivity[i+3] = ix + iy*(sim->bx + 2) + 1;
+          i+=4; // quads have 4 indices
           }
-     //for(i=0; i < (sim->bx+1) * (sim->by+1) * 4; i++)
-       //std::cout << sim->connectivity[i] << " ";
     }
-#ifdef PARALLEL
-std::cout << "XExtents[" << sim->rankx << ","<<sim->ranky << "] = " << sim->local_extents[0] << "," << sim->local_extents[1] << " vs. " <<(sim->rankx * sim->bx) << "," << ((sim->bx + 1) + sim->rankx * sim->bx)<< std::endl;
+
+//std::cout << "XExtents[" << sim->rankx << ","<<sim->ranky << "] = " << sim->local_extents[0] << "," << sim->local_extents[1] << " vs. " <<(sim->rankx * sim->bx) << "," << ((sim->bx + 1) + sim->rankx * sim->bx)<< std::endl;
   for(i = 0; i < (sim->bx + 2); i++)
     sim->cx[i] = (i + sim->rankx * sim->bx) * hsize;
-std::cout << "YExtents[" << sim->rankx << ","<<sim->ranky << "] = " << sim->local_extents[2] << "," << sim->local_extents[3] << " vs. " <<(sim->ranky * sim->by) << "," << ((sim->by + 1) + sim->ranky * sim->by)<< std::endl;
+//std::cout << "YExtents[" << sim->rankx << ","<<sim->ranky << "] = " << sim->local_extents[2] << "," << sim->local_extents[3] << " vs. " <<(sim->ranky * sim->by) << "," << ((sim->by + 1) + sim->ranky * sim->by)<< std::endl;
   for(i = 0; i < (sim->by + 2); i++)
     sim->cy[i] = (i + sim->ranky * sim->by) * hsize;
-#else
-  for(i = 0; i < (sim->bx + 2); i++)
-    sim->cx[i] = i  * hsize;
-  for(i = 0; i < (sim->by + 2); i++)
-    sim->cy[i] = i  * hsize;
-#endif
 }
 
 void FreeGridMemory(simulation_data *sim)
@@ -164,6 +147,9 @@ void FreeGridMemory(simulation_data *sim)
   free(sim->Temp);
   free(sim->cx);
   free(sim->cy);
+  free(sim->explicit_cx);
+  free(sim->explicit_cy);
+  free(sim->explicit_cz);
 }
 
 #define DUPLICATECELL 1
@@ -188,29 +174,22 @@ void set_initial_bc(simulation_data *sim)
     sim->Ghost[i*(sim->bx+2)] = sim->Ghost[i*(sim->bx+2)+sim->by+1] = HIDDENPOINT;
     }
     
-  memset(sim->Temp, 0, sizeof(double)*(sim->bx+2)*(sim->by+2));
+  //memset(sim->Temp, 0, sizeof(double)*(sim->bx+2)*(sim->by+2));
   sim->iter = 0; sim->gdel = 1.0;
-#ifdef PARALLEL
-    if (sim->ranky == 0)
+
+  if (sim->ranky == 0)
+    {
+    for (i = 0; i < (sim->bx+2); i++)
       {
-      for (i = 0; i < (sim->bx+2); i++)
-        {
-        sim->Temp[i] = sin(M_PI*(i+ sim->rankx * sim->bx)/(sim->resolution+1));              /* at y = 0; all x */
-        }
-      }
-    if (sim->ranky == (sim->cart_dims[1]-1)) {
-      for (i = 0; i < (sim->bx+2); i++) {
-        sim->Temp[i+(sim->bx+2)*(sim->by+1)] = sin(M_PI*sim->cx[i])*exp(-M_PI);   // at y = 1; all x
+      sim->Temp[i] = sin(M_PI*(i+ sim->rankx * sim->bx)/(sim->resolution+1));              /* at y = 0; all x */
       }
     }
-#else
-    for (i = 0; i < (sim->resolution+2); i++)
+  if (sim->ranky == (sim->cart_dims[1]-1)) {
+    for (i = 0; i < (sim->bx+2); i++)
       {
-      x = sin(M_PI*i/(sim->resolution+1));    /* at y = 0; all x */
-      sim->Temp[i] = x;    /* at y = 0; all x */
-      sim->Temp[i+(sim->resolution+2)] = x*exp(-M_PI);   /* at y = 1; all x */
+      sim->Temp[i+(sim->bx+2)*(sim->by+1)] = sin(M_PI*sim->cx[i])*exp(-M_PI);   // at y = 1; all x
       }
-#endif
+    }
   memset(sim->oldTemp, 0, sizeof(double)*(sim->bx+2)*(sim->by+2));
 }
 
@@ -226,37 +205,20 @@ void simulate_one_timestep(simulation_data *sim)
 /* compute Temp solution according to the Jacobi scheme */
   double del = update_jacobi(sim);
   /* find global max error */
-#ifdef PARALLEL
+
   MPI_Allreduce( &del, &sim->gdel, 1, MPI_DOUBLE, MPI_MAX, sim->topocomm );
-#else
-  sim->gdel = del;
-#endif
   
-  if(sim->iter%INCREMENT == 0)  // only print global error every N steps
-    {
-#ifdef PARALLEL
-    if(!sim->par_rank)
-      {
-      //fprintf(stdout,"iter,del,gdel: %6d, %lf %lf\n",sim->iter, del, sim->gdel);
-      }
-#else
-    fprintf(stdout,"iter,del,gdel: %6d, %lf %lf\n", sim->iter, del, sim->gdel);
-#endif
-    }
-#ifdef PARALLEL
   exchange_ghost_lines(sim); // update lowest and uppermost grid lines
-#endif
   sim->iter++;
 }
 
 double update_jacobi(simulation_data *sim)
 {
-  int i, j;
   double del = 0.0;
 
-  for (j = 1; j < sim->by+1; j++)
+  for(auto j = 1; j < sim->by+1; j++)
     {
-    for (i = 1; i < sim->bx+1; i++)
+    for(auto i = 1; i < sim->bx+1; i++)
       {
       sim->Temp[i+(sim->bx+2)*j] = ( sim->oldTemp[i+(sim->bx+2)*(j+1)] +
                            sim->oldTemp[(i+1)+(sim->bx+2)*j] +
@@ -269,7 +231,6 @@ double update_jacobi(simulation_data *sim)
   return del;
 }
 
-#ifdef PARALLEL
 void exchange_ghost_lines(simulation_data *sim)
 {
   MPI_Status status;
@@ -341,7 +302,6 @@ void MPIIOWriteData(const char *filename, simulation_data *sim)
   MPI_File_close(&filehandle);
   MPI_Type_free(&filetype);
 }
-#endif
 
 void WriteFinalGrid(simulation_data *sim)
 {
@@ -382,23 +342,10 @@ void WriteFinalGrid(simulation_data *sim)
   }
 
   // second write the result file in binary
-#ifdef PARALLEL
   MPIIOWriteData(fname, sim);
 
   MPI_Type_free(&rowtype);
   MPI_Type_free(&coltype);
 
   MPI_Barrier(sim->topocomm);
-#else
-  char fname2[256];
-  strcpy(fname2, fname);
-  strcpy(&fname2[strlen(fname)], ".bin");
-  FILE *fp = fopen(fname2, "w");
-  int dimuids[2]={sim->m+2, sim->m+2};
-  fwrite(dimuids, sizeof(int), 2, fp);
-  fwrite(sim->Temp, sizeof(double), (sim->m+2)*(sim->m+2), fp);
-  fclose(fp);
-#endif
 }
-
-

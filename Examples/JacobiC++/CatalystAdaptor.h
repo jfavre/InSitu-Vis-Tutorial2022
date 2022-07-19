@@ -80,15 +80,6 @@ void Execute(simulation_data& sim) //int cycle, double time, Grid& grid, Attribu
   // now create the mesh.
   auto mesh = channel["data"];
 
-  if(sim.mesh == "uniform")
-    {
-    //std::cout << "setting dimensions =[" << (sim.local_extents[1] - sim.local_extents[0] + 1) << ", " << (sim.local_extents[3] - sim.local_extents[2] + 1) << ", 1]"<< std::endl;
-    mesh["coordsets/coords/dims/i"].set(sim.local_extents[1] - sim.local_extents[0] + 1);
-    mesh["coordsets/coords/dims/j"].set(sim.local_extents[3] - sim.local_extents[2] + 1);
-    mesh["coordsets/coords/dims/k"].set(1);
-    //std::cerr << sim.local_extents[1] - sim.local_extents[0] + 1 << "x" << sim.local_extents[3] - sim.local_extents[2] + 1 << "x1\n";
-    }
-  
   if(sim.mesh == "rectilinear")
     {
     mesh["coordsets/coords/values/x"].set_external(sim.cx, (sim.bx + 2));
@@ -98,6 +89,12 @@ void Execute(simulation_data& sim) //int cycle, double time, Grid& grid, Attribu
     }
   else if(sim.mesh == "uniform")
     {
+    //std::cout << "Uniform Grid dimensions =[" << (sim.local_extents[1] - sim.local_extents[0] + 1) << ", " << (sim.local_extents[3] - sim.local_extents[2] + 1) << ", 1]"<< std::endl;
+    mesh["coordsets/coords/dims/i"].set(sim.local_extents[1] - sim.local_extents[0] + 1);
+    mesh["coordsets/coords/dims/j"].set(sim.local_extents[3] - sim.local_extents[2] + 1);
+    mesh["coordsets/coords/dims/k"].set(1);
+    
+    //std::cout << "Uniform Grid Origin =[" << sim.cx[0] << ", " << sim.cy[0] << ", 0.]"<< std::endl;
     mesh["coordsets/coords/origin/x"].set(sim.cx[0]);
     mesh["coordsets/coords/origin/y"].set(sim.cy[0]);
     mesh["coordsets/coords/origin/z"].set(0.0);
@@ -111,6 +108,7 @@ void Execute(simulation_data& sim) //int cycle, double time, Grid& grid, Attribu
 
   else if((sim.mesh == "structured") || (sim.mesh == "unstructured"))
     {
+    //std::cout << "Explicit Grid dimensions =[" << (sim.bx + 2) * (sim.by + 2) << ", " << (sim.bx + 2) * (sim.by + 2) << ", " << (sim.bx + 2) * (sim.by + 2)<< std::endl;
     mesh["coordsets/coords/type"].set("explicit");
     mesh["coordsets/coords/values/x"].set_external(sim.explicit_cx, (sim.bx + 2) * (sim.by + 2),0,sizeof(float));
     mesh["coordsets/coords/values/y"].set_external(sim.explicit_cy, (sim.bx + 2) * (sim.by + 2),0,sizeof(float));

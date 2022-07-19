@@ -1,14 +1,12 @@
 /*
  A parallel Jacobi solver for the Laplacian equation in 2D
  Written by Jean M. Favre, Swiss National Supercomputing Center
- Last tested Thu Oct 28 01:26:47 PM CEST 2021
-
+ Last tested Tue Jul 19 04:38:25 PM CEST 2022
 */
 #include <iostream>
 #include <string>
-#ifdef PARALLEL
+
 #include <mpi.h> 
-#endif
 
 #include "solvers.h"
 
@@ -57,7 +55,6 @@ int main(int argc, char *argv[])
   simulation_data sim = {.resolution = grid_resolution, .mesh = meshtype};
   SimInitialize(&sim);
 
-#ifdef PARALLEL
   sim.cart_dims[0] = sim.cart_dims[1] = 0;
   int PartitioningDimension = 2; // want a 2D MPI partitioning. otherwise set to 1.
   MPI_Init(&argc, &argv);
@@ -67,11 +64,10 @@ int main(int argc, char *argv[])
   MPI_Partition(PartitioningDimension, &sim);
 
   neighbors(&sim);
-#endif
 
 // We use (bx + 2) grid points in the X direction, i.e. interior points plus 2 b.c. points
 // We use (by + 2) grid points in the Y direction, i.e. interior points plus 2 b.c. points
-  // decompose the domain
+// decompose the domain
 
   AllocateGridMemory(&sim);
 
@@ -91,10 +87,8 @@ int main(int argc, char *argv[])
 #endif
     }
 
-#ifdef PARALLEL
   if (!sim.par_rank)
-#endif
-  std::cout << "Stopped at iteration " << sim.iter << " . Maximum error = " << sim.gdel << std::endl;
+    std::cout << "Stopped at iteration " << sim.iter << " . Maximum error = " << sim.gdel << std::endl;
 
   WriteFinalGrid(&sim);
 
@@ -104,9 +98,7 @@ int main(int argc, char *argv[])
 
   FreeGridMemory(&sim);
 
-#ifdef PARALLEL
   MPI_Finalize();
-#endif
 
   return (0);
 }
