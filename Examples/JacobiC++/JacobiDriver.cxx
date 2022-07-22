@@ -4,6 +4,7 @@
  Last tested Tue Jul 19 04:38:25 PM CEST 2022
 */
 #include <iostream>
+#include <string.h>
 #include <string>
 
 #include <mpi.h> 
@@ -16,10 +17,10 @@
 
 int main(int argc, char *argv[])
 {
-  int grid_resolution;
-  std::string meshtype;
+  int grid_resolution=64;
   int Catalyst_argc = argc;
   std::set<std::string> meshtypes = {"uniform", "rectilinear", "structured", "unstructured"};
+  std::string meshtype = "uniform";
     
   // we first capture the only two possible arguments allowed --res= and --mesh=
   for (auto cc = 1; cc < argc; ++cc)
