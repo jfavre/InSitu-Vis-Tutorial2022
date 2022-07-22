@@ -44,13 +44,13 @@ pNG1.Writer.FileName = '/tmp/view-{timestep:06d}{camera}.png'
 pNG1.Writer.ImageResolution = [800,800]
 pNG1.Writer.Format = 'PNG'
 
-# create extractor
-"""
-vTP1 = CreateExtractor('VTI', reader, registrationName='VTP1')
+# The vtkPartitionedDataSet type works for all our supported types
+
+vTP1 = CreateExtractor('VTPD', reader, registrationName='VTPD1')
 vTP1.Trigger = 'TimeStep'
 vTP1.Trigger.Frequency = 500
-vTP1.Writer.FileName = 'Contour1_{timestep:06d}.pvti'
-"""
+vTP1.Writer.FileName = 'dataset_{timestep:06d}.vtpd'
+
 
 SetActiveSource(reader)
 
