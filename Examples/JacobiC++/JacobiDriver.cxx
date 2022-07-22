@@ -15,6 +15,10 @@
 #include "CatalystAdaptor.h"
 #endif
 
+#ifdef USE_ASCENT
+#include "AscentAdaptor.h"
+#endif
+
 int main(int argc, char *argv[])
 {
   int grid_resolution=64;
@@ -78,6 +82,10 @@ int main(int argc, char *argv[])
   CatalystAdaptor::Initialize(Catalyst_argc, &argv[argc-Catalyst_argc]);
   std::cout << "CatalystInitialize" << std::endl;
 #endif
+#ifdef USE_ASCENT
+  AscentAdaptor::Initialize(Catalyst_argc, &argv[argc-Catalyst_argc], &sim);
+  std::cout << "AscentInitialize" << std::endl;
+#endif
 
   while (sim.gdel > TOL)
     {
@@ -85,6 +93,9 @@ int main(int argc, char *argv[])
 
 #ifdef USE_CATALYST
     CatalystAdaptor::Execute(sim); // sim.iter*0.1, sim.iter*0.1, grid, attributes);
+#endif
+#ifdef USE_ASCENT
+    AscentAdaptor::Execute(sim); // sim.iter*0.1, sim.iter*0.1, grid, attributes);
 #endif
     }
 
@@ -95,6 +106,10 @@ int main(int argc, char *argv[])
 
 #ifdef USE_CATALYST
   CatalystAdaptor::Finalize();
+#endif
+
+#ifdef USE_ASCENT
+  AscentAdaptor::Finalize();
 #endif
 
   FreeGridMemory(&sim);

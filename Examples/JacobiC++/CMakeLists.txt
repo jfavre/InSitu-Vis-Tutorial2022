@@ -26,21 +26,25 @@ JacobiDriver.cxx
 add_executable(pjacobi ${C_SRCS})
 target_link_libraries(pjacobi PRIVATE MPI::MPI_C MPI::MPI_CXX m)
 
-option(USE_CATALYST "Use ParaView's Catalyst" ON)
+set(INSITU None CACHE STRING "Enable in-situ support")
+set_property(CACHE INSITU PROPERTY STRINGS None Catalyst Ascent)
 
-option(INSITU_COUPLING "create an executable linked with in-situ library" ON)
-if(INSITU_COUPLING)
-  if(USE_CATALYST)
+if(INSITU STREQUAL "Catalyst")
     find_package(catalyst REQUIRED PATHS "${ParaView_DIR}/catalyst")
     # we only need C++ compilers if we're building the Adaptor
     enable_language(CXX)
 
-  add_executable(pjacobi_catalystV2 ${C_SRCS})
-  target_compile_definitions(pjacobi_catalystV2
+  target_compile_definitions(pjacobi
     PRIVATE
       "PARAVIEW_IMPL_DIR=\"${ParaView_CATALYST_DIR}\""
       USE_CATALYST=1)
-  target_link_libraries(pjacobi_catalystV2 PRIVATE MPI::MPI_C MPI::MPI_CXX m catalyst::catalyst)
-
-  endif(USE_CATALYST)
-endif(INSITU_COUPLING)
+  target_link_libraries(pjacobi PRIVATE catalyst::catalyst)
+elseif(INSITU STREQUAL "Ascent")
+    find_package(Ascent REQUIRED PATHS "/apps/daint/UES/Ascent/ascent-install/l
+ib/cmake/ascent")
+    target_compile_definitions(pjacobi
+	    PRIVATE
+	    USE_ASCENT=1
+	    )
+    target_link_libraries(pjacobi PRIVATE ascent::ascent_mpi)
+endif()
