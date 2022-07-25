@@ -16,13 +16,13 @@ typedef struct
     int      iter;
     double   gdel, *oldTemp, *Temp;
     unsigned char *Ghost;
-    float    *cx, *cy;
+    double    *cx, *cy;
     int      local_extents[6];
     std::string mesh;  // "uniform", "rectilinear", "structured", "unstructured"
     // for unstructured mesh only
     int      *connectivity;
     // for structured and unstructured mesh only
-    float    *explicit_cx, *explicit_cy, *explicit_cz;
+    double    *explicit_cx, *explicit_cy, *explicit_cz;
 } simulation_data;
 
 #define BASENAME "."

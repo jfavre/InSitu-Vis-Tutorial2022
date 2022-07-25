@@ -1,13 +1,29 @@
+# How to compile with the Catalyst backend
 
-env PARAVIEW_LOG_CATALYST_VERBOSITY=INFO  ./bin/pjacobi_catalystV2 catalyst_state.py 
+mkdir buildCatalyst
+cd buildCatalyst
+ccmake -DINSITU=Catalyst ..
 
-rm /tmp/output-*png log; make && mpiexec -n 4 ./bin/pjacobi_catalystV2 catalyst_state.py --output datasets/dataset-%04ts.vtpd  &> log; eog /tmp/output-*png
+env PARAVIEW_LOG_CATALYST_VERBOSITY=INFO  ./bin/pjacobi catalyst_state.py 
 
-make && ./bin/pjacobi_catalystV2 --res=32 --mesh=uniform      catalyst_state.py
-make && ./bin/pjacobi_catalystV2 --res=32 --mesh=rectilinear  catalyst_state.py
-make && ./bin/pjacobi_catalystV2 --res=32 --mesh=structured   catalyst_state.py
-make && ./bin/pjacobi_catalystV2 --res=32 --mesh=unstructured catalyst_state.py
+rm /tmp/output-*png log; make && mpiexec -n 4 ./bin/pjacobi catalyst_state.py --output datasets/dataset-%04ts.vtpd  &> log; eog /tmp/output-*png
 
+make && ./bin/pjacobi --res=32 --mesh=uniform      catalyst_state.py
+make && ./bin/pjacobi --res=32 --mesh=rectilinear  catalyst_state.py
+make && ./bin/pjacobi --res=32 --mesh=structured   catalyst_state.py
+make && ./bin/pjacobi --res=32 --mesh=unstructured catalyst_state.py
+
+#################################################
+
+# How to compile with the Ascent backend
+
+mkdir buildAscent
+cd buildAscent
+ccmake -DINSITU=Ascent ..
+
+get the files ascent_actions.yaml plot_actions.yaml in your runtime directory
+
+#################################################
 Connect to Piz Daint:
 
 ssh -R 22222:localhost:22222  daint103.cscs.ch

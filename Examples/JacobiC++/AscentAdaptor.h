@@ -26,7 +26,6 @@ void Initialize(int argc, char* argv[], const simulation_data *sim)
     {
     mesh["coordsets/coords/values/x"].set_external(sim->cx, (sim->bx + 2));
     mesh["coordsets/coords/values/y"].set_external(sim->cy, (sim->by + 2));
-    mesh["coordsets/coords/values/z"].set(0.0);
     mesh["coordsets/coords/type"].set(sim->mesh);
     }
   else if(sim->mesh == "uniform")
@@ -34,27 +33,25 @@ void Initialize(int argc, char* argv[], const simulation_data *sim)
     //std::cout << "Uniform Grid dimensions =[" << (sim.local_extents[1] - sim.local_extents[0] + 1) << ", " << (sim.local_extents[3] - sim.local_extents[2] + 1) << ", 1]"<< std::endl;
     mesh["coordsets/coords/dims/i"].set(sim->local_extents[1] - sim->local_extents[0] + 1);
     mesh["coordsets/coords/dims/j"].set(sim->local_extents[3] - sim->local_extents[2] + 1);
-    mesh["coordsets/coords/dims/k"].set(1);
+    // do not specify the 3rd dimension with a dim of 1, a z_origin, and a z_spacing
     
     //std::cout << "Uniform Grid Origin =[" << sim.cx[0] << ", " << sim.cy[0] << ", 0.]"<< std::endl;
     mesh["coordsets/coords/origin/x"].set(sim->cx[0]);
     mesh["coordsets/coords/origin/y"].set(sim->cy[0]);
-    mesh["coordsets/coords/origin/z"].set(0.0);
     mesh["coordsets/coords/type"].set(sim->mesh);
 
     float spacing = 1.0/(sim->resolution+1.0);
     mesh["coordsets/coords/spacing/dx"].set(spacing);
     mesh["coordsets/coords/spacing/dy"].set(spacing);
-    mesh["coordsets/coords/spacing/dz"].set(spacing);
     }
 
   else if((sim->mesh == "structured") || (sim->mesh == "unstructured"))
     {
     //std::cout << "Explicit Grid dimensions =[" << (sim.bx + 2) * (sim.by + 2) << ", " << (sim.bx + 2) * (sim.by + 2) << ", " << (sim.bx + 2) * (sim.by + 2)<< std::endl;
     mesh["coordsets/coords/type"].set("explicit");
-    mesh["coordsets/coords/values/x"].set_external(sim->explicit_cx, (sim->bx + 2) * (sim->by + 2),0,sizeof(float));
-    mesh["coordsets/coords/values/y"].set_external(sim->explicit_cy, (sim->bx + 2) * (sim->by + 2),0,sizeof(float));
-    mesh["coordsets/coords/values/z"].set_external(sim->explicit_cz, (sim->bx + 2) * (sim->by + 2),0,sizeof(float));
+    mesh["coordsets/coords/values/x"].set_external(sim->explicit_cx, (sim->bx + 2) * (sim->by + 2), 0, sizeof(double));
+    mesh["coordsets/coords/values/y"].set_external(sim->explicit_cy, (sim->bx + 2) * (sim->by + 2), 0, sizeof(double));
+    mesh["coordsets/coords/values/z"].set_external(sim->explicit_cz, (sim->bx + 2) * (sim->by + 2), 0, sizeof(double));
     }
 
   // add topology.
@@ -88,13 +85,13 @@ void Initialize(int argc, char* argv[], const simulation_data *sim)
     }
   else CONDUIT_INFO("blueprint verify success!" + verify_info.to_json());
   
-  conduit::Node &add_scene = actions.append();
-  add_scene["action"] = "add_scenes";
-// declare a scene (s1) and pseudocolor plot (p1)
-  conduit::Node &scenes       = add_scene["scenes"];
-  scenes["s1/plots/p1/type"]  = "pseudocolor";
-  scenes["s1/plots/p1/field"] = "temperature";
-
+  conduit::Node &add_action = actions.append();
+  
+  add_action["action"] = "add_scenes";
+  conduit::Node &scenes       = add_action["scenes"];
+  scenes["view/plots/p1/type"]  = "pseudocolor";
+  scenes["view/plots/p1/field"] = "temperature";
+  scenes["view/image_prefix"] = "view_%04d";
 }
 
 void Execute(simulation_data& sim) //int cycle, double time, Grid& grid, Attributes& attribs)

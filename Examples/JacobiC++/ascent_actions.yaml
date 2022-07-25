@@ -1,0 +1,11 @@
+# Written by Jean M. Favre
+# tested Mon Jul 25 09:20:22 AM CEST 2022
+-
+  action: "add_triggers"
+  triggers:
+    t1:
+      params:
+        condition: "cycle() % 100 == 0"
+        actions_file: "plot_actions.yaml"
+
+

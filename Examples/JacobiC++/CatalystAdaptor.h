@@ -110,9 +110,9 @@ void Execute(simulation_data& sim) //int cycle, double time, Grid& grid, Attribu
     {
     //std::cout << "Explicit Grid dimensions =[" << (sim.bx + 2) * (sim.by + 2) << ", " << (sim.bx + 2) * (sim.by + 2) << ", " << (sim.bx + 2) * (sim.by + 2)<< std::endl;
     mesh["coordsets/coords/type"].set("explicit");
-    mesh["coordsets/coords/values/x"].set_external(sim.explicit_cx, (sim.bx + 2) * (sim.by + 2),0,sizeof(float));
-    mesh["coordsets/coords/values/y"].set_external(sim.explicit_cy, (sim.bx + 2) * (sim.by + 2),0,sizeof(float));
-    mesh["coordsets/coords/values/z"].set_external(sim.explicit_cz, (sim.bx + 2) * (sim.by + 2),0,sizeof(float));
+    mesh["coordsets/coords/values/x"].set_external(sim.explicit_cx, (sim.bx + 2) * (sim.by + 2),0,sizeof(double));
+    mesh["coordsets/coords/values/y"].set_external(sim.explicit_cy, (sim.bx + 2) * (sim.by + 2),0,sizeof(double));
+    mesh["coordsets/coords/values/z"].set_external(sim.explicit_cz, (sim.bx + 2) * (sim.by + 2),0,sizeof(double));
     }
 
   // add topology.

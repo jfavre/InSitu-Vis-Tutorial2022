@@ -83,17 +83,17 @@ void AllocateGridMemory(simulation_data *sim)
   sim->oldTemp = (double *)calloc((sim->bx + 2) * (sim->by + 2), sizeof(double));
   sim->Temp    = (double *)calloc((sim->bx + 2) * (sim->by + 2), sizeof(double));
   sim->Ghost   = (unsigned char *)calloc((sim->bx + 2) * (sim->by + 2), sizeof(unsigned char));
-  sim->cx      = (float *)malloc(sizeof(float) * (sim->bx + 2));
-  sim->cy      = (float *)malloc(sizeof(float) * (sim->by + 2));
+  sim->cx      = (double *)malloc(sizeof(double) * (sim->bx + 2));
+  sim->cy      = (double *)malloc(sizeof(double) * (sim->by + 2));
 
   float hsize = 1.0/(sim->resolution+1.0);
 
   if((sim->mesh == "unstructured") || (sim->mesh == "structured"))
     {
     int i=0;
-    sim->explicit_cx = (float *)malloc((sim->bx + 2) * (sim->by + 2) * sizeof(float));
-    sim->explicit_cy = (float *)malloc((sim->bx + 2) * (sim->by + 2) * sizeof(float));
-    sim->explicit_cz = (float *)calloc((sim->bx + 2) * (sim->by + 2), sizeof(float)); // fill with zeroes
+    sim->explicit_cx = (double *)malloc((sim->bx + 2) * (sim->by + 2) * sizeof(double));
+    sim->explicit_cy = (double *)malloc((sim->bx + 2) * (sim->by + 2) * sizeof(double));
+    sim->explicit_cz = (double *)calloc((sim->bx + 2) * (sim->by + 2), sizeof(double)); // fill with zeroes
     for(int iy=0; iy <= sim->by+1; iy++)
       for(int ix=0; ix <= sim->bx+1; ix++)
         {
