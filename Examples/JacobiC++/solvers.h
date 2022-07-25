@@ -22,7 +22,7 @@ typedef struct
     // for unstructured mesh only
     int      *connectivity;
     // for structured and unstructured mesh only
-    double    *explicit_cx, *explicit_cy, *explicit_cz;
+    double    *explicit_cx, *explicit_cy;
 } simulation_data;
 
 #define BASENAME "."

@@ -51,7 +51,6 @@ void Initialize(int argc, char* argv[], const simulation_data *sim)
     mesh["coordsets/coords/type"].set("explicit");
     mesh["coordsets/coords/values/x"].set_external(sim->explicit_cx, (sim->bx + 2) * (sim->by + 2), 0, sizeof(double));
     mesh["coordsets/coords/values/y"].set_external(sim->explicit_cy, (sim->bx + 2) * (sim->by + 2), 0, sizeof(double));
-    mesh["coordsets/coords/values/z"].set_external(sim->explicit_cz, (sim->bx + 2) * (sim->by + 2), 0, sizeof(double));
     }
 
   // add topology.
@@ -65,9 +64,8 @@ void Initialize(int argc, char* argv[], const simulation_data *sim)
       }
     else if(sim->mesh == "structured")
       {
-      mesh["topologies/mesh/elements/dims/i"].set(sim->local_extents[1] - sim->local_extents[0] + 1);
-      mesh["topologies/mesh/elements/dims/j"].set(sim->local_extents[3] - sim->local_extents[2] + 1);
-      mesh["topologies/mesh/elements/dims/k"].set(1);
+      mesh["topologies/mesh/elements/dims/i"].set(sim->local_extents[1] - sim->local_extents[0]);
+      mesh["topologies/mesh/elements/dims/j"].set(sim->local_extents[3] - sim->local_extents[2]);
       }
       
   // temperature is vertex-data.
@@ -84,7 +82,7 @@ void Initialize(int argc, char* argv[], const simulation_data *sim)
     CONDUIT_INFO("blueprint verify failed!" + verify_info.to_json());
     }
   else CONDUIT_INFO("blueprint verify success!" + verify_info.to_json());
-  
+
   conduit::Node &add_action = actions.append();
   
   add_action["action"] = "add_scenes";
@@ -92,6 +90,8 @@ void Initialize(int argc, char* argv[], const simulation_data *sim)
   scenes["view/plots/p1/type"]  = "pseudocolor";
   scenes["view/plots/p1/field"] = "temperature";
   scenes["view/image_prefix"] = "view_%04d";
+
+  //std::cout << mesh.to_yaml();
 }
 
 void Execute(simulation_data& sim) //int cycle, double time, Grid& grid, Attributes& attribs)

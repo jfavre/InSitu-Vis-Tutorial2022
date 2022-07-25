@@ -28,7 +28,6 @@ void SimInitialize(simulation_data *sim)
   sim->connectivity = nullptr;
   sim->explicit_cx = nullptr;
   sim->explicit_cy = nullptr;
-  sim->explicit_cz = nullptr;
 }
 
 void MPI_Partition(int PartitioningDimension, simulation_data *sim)
@@ -93,7 +92,6 @@ void AllocateGridMemory(simulation_data *sim)
     int i=0;
     sim->explicit_cx = (double *)malloc((sim->bx + 2) * (sim->by + 2) * sizeof(double));
     sim->explicit_cy = (double *)malloc((sim->bx + 2) * (sim->by + 2) * sizeof(double));
-    sim->explicit_cz = (double *)calloc((sim->bx + 2) * (sim->by + 2), sizeof(double)); // fill with zeroes
     for(int iy=0; iy <= sim->by+1; iy++)
       for(int ix=0; ix <= sim->bx+1; ix++)
         {
@@ -149,7 +147,6 @@ void FreeGridMemory(simulation_data *sim)
   free(sim->cy);
   free(sim->explicit_cx);
   free(sim->explicit_cy);
-  free(sim->explicit_cz);
 }
 
 #define DUPLICATECELL 1

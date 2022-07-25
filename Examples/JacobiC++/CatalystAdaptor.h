@@ -112,7 +112,6 @@ void Execute(simulation_data& sim) //int cycle, double time, Grid& grid, Attribu
     mesh["coordsets/coords/type"].set("explicit");
     mesh["coordsets/coords/values/x"].set_external(sim.explicit_cx, (sim.bx + 2) * (sim.by + 2),0,sizeof(double));
     mesh["coordsets/coords/values/y"].set_external(sim.explicit_cy, (sim.bx + 2) * (sim.by + 2),0,sizeof(double));
-    mesh["coordsets/coords/values/z"].set_external(sim.explicit_cz, (sim.bx + 2) * (sim.by + 2),0,sizeof(double));
     }
 
   // add topology.
@@ -126,9 +125,8 @@ void Execute(simulation_data& sim) //int cycle, double time, Grid& grid, Attribu
       }
     else if(sim.mesh == "structured")
       {
-      mesh["topologies/mesh/elements/dims/i"].set(sim.local_extents[1] - sim.local_extents[0] + 1);
-      mesh["topologies/mesh/elements/dims/j"].set(sim.local_extents[3] - sim.local_extents[2] + 1);
-      mesh["topologies/mesh/elements/dims/k"].set(1);
+      mesh["topologies/mesh/elements/dims/i"].set(sim.local_extents[1] - sim.local_extents[0]);
+      mesh["topologies/mesh/elements/dims/j"].set(sim.local_extents[3] - sim.local_extents[2]);
       }
       
   // Finally, add fields.
