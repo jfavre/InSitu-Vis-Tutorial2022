@@ -46,6 +46,7 @@ class Simulation:
 
         self.vel_x = np.zeros(self.x_coord.shape)
         self.vel_y = np.zeros(self.x_coord.shape)
+        self.vel_z = np.zeros(self.x_coord.shape)
         self.A = 0.1 * np.pi
         self.w = 2.0 * np.pi/10.
         self.E = 0.25
@@ -107,7 +108,8 @@ class SimulationWithAscent(Simulation):
 
             if not self.iteration % self.frequency:
                 self.mesh["state/cycle"] = self.iteration
-                self.scenes["s1/renders/r1/image_name"] = f'mag.{self.iteration:03d}'
+                self.scenes["s1/renders/r1/image_name"] = f'vel_mag.{self.iteration:03d}'
+                self.scenes["s2/renders/r1/image_name"] = f'vort_mag.{self.iteration:03d}'
                 self.insitu.publish(self.mesh)
                 self.insitu.execute(self.actions)
 
@@ -142,6 +144,7 @@ class SimulationWithAscent(Simulation):
         self.mesh["fields/Velocity/topology"] = "mesh"
         self.mesh["fields/Velocity/values/u"].set_external(self.vel_x.ravel())
         self.mesh["fields/Velocity/values/v"].set_external(self.vel_y.ravel())
+        self.mesh["fields/Velocity/values/w"].set_external(self.vel_z.ravel())
 
         # verify the mesh we created conforms to the blueprint
         verify_info = conduit.Node()
@@ -158,6 +161,14 @@ class SimulationWithAscent(Simulation):
         self.pipelines["pl1/f1/params/field"] = "Velocity"
         self.pipelines["pl1/f1/params/output_name"] = "velocity_mag2d"
 
+        self.pipelines["pl2/f1/type"] = "vorticity"
+        self.pipelines["pl2/f1/params/field"] = "Velocity"
+        self.pipelines["pl2/f1/params/output_name"] = "Mvorticity"
+        
+        self.pipelines["pl2/f2/type"] = "vector_magnitude"
+        self.pipelines["pl2/f2/params/field"] = "Mvorticity"
+        self.pipelines["pl2/f2/params/output_name"] = "vorticity_mag"
+
         self.add_act = self.actions.append()
         self.add_act["action"] = "add_scenes"
 
@@ -165,6 +176,11 @@ class SimulationWithAscent(Simulation):
         self.scenes["s1/plots/p1/type"] = "pseudocolor"
         self.scenes["s1/plots/p1/pipeline"] = "pl1"
         self.scenes["s1/plots/p1/field"] = "velocity_mag2d"
+
+        self.scenes = self.add_act["scenes"]
+        self.scenes["s2/plots/p1/type"] = "pseudocolor"
+        self.scenes["s2/plots/p1/pipeline"] = "pl2"
+        self.scenes["s2/plots/p1/field"] = "vorticity_mag"
 
     def finalize_ascent(self):
         """Save the mesh to a blueprint HDF5 file and close"""
@@ -191,7 +207,7 @@ class SimulationWithAscent(Simulation):
         self.insitu.close()
 
 #sim = Simulation()
-sim = SimulationWithAscent(iterations=100, frequency=30)
+sim = SimulationWithAscent(iterations=100, frequency=10)
 sim.initialize_ascent()
 sim.compute_loop()
 sim.draw_matplotlib()
