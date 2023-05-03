@@ -9,7 +9,7 @@
 #include <iostream>
 #include <string>
 
-namespace AscentAdaptor
+namespace InSitu
 {
   ascent::Ascent ascent;
   conduit::Node mesh;
@@ -20,6 +20,8 @@ void Initialize(int argc, char* argv[], const simulation_data *sim)
   std::cout << "AscentInitialize.........................................\n";
   conduit::Node ascent_options;
   ascent_options["mpi_comm"] = MPI_Comm_c2f(MPI_COMM_WORLD);
+  //ascent_opts["ghost_field_name"].append() = "cell_ghosts";
+  ascent_options["ghost_field_name"].append() = "point_ghosts";
   ascent.open(ascent_options);
   
   if(sim->mesh == "rectilinear")
@@ -74,6 +76,12 @@ void Initialize(int argc, char* argv[], const simulation_data *sim)
   mesh["fields/temperature/topology"].set("mesh");
   mesh["fields/temperature/volume_dependent"].set("false");
   mesh["fields/temperature/values"].set_external(sim->Temp, (sim->bx + 2) * (sim->by + 2));
+  
+  mesh["fields/point_ghosts/association"].set("vertex");
+  mesh["fields/point_ghosts/type"].set("scalar");
+  mesh["fields/point_ghosts/topology"].set("mesh");
+  mesh["fields/point_ghosts/volume_dependent"].set("false");
+  mesh["fields/point_ghosts/values"].set_external(sim->Ghost, (sim->bx + 2) * (sim->by + 2));
   
   conduit::Node verify_info;
   if (!conduit::blueprint::mesh::verify(mesh, verify_info))

@@ -1,12 +1,12 @@
 /*
  A parallel Jacobi solver for the Laplacian equation in 2D
  Written by Jean M. Favre, Swiss National Supercomputing Center
- Last tested Tue Jul 19 04:38:25 PM CEST 2022
+ Last tested Wed  3 May 12:20:11 CEST 2023
 */
 #include <iostream>
 #include <string.h>
 #include <string>
-
+#include <math.h>
 #include <mpi.h> 
 
 #include "solvers.h"
@@ -21,7 +21,7 @@
 
 int main(int argc, char *argv[])
 {
-  int grid_resolution=64;
+  int grid_resolution = 64;
   int Catalyst_argc = argc;
   std::set<std::string> meshtypes = {"uniform", "rectilinear", "structured", "unstructured"};
   std::string meshtype = "uniform";
@@ -65,7 +65,12 @@ int main(int argc, char *argv[])
   MPI_Init(&argc, &argv);
   MPI_Comm_rank(MPI_COMM_WORLD, &sim.par_rank); /* get current process id */
   MPI_Comm_size(MPI_COMM_WORLD, &sim.par_size); /* get # procs from env or */
-
+  // let's enforce the use of a number of MPI tasks that is a square number
+  if(ceil((double)sqrt(sim.par_size)) != floor((double)sqrt(sim.par_size)))
+    {
+    std::cerr << "Number of MPI tasks is not a perfect square";
+    exit(1);
+    }
   MPI_Partition(PartitioningDimension, &sim);
 
   neighbors(&sim);
@@ -78,24 +83,14 @@ int main(int argc, char *argv[])
 
   set_initial_bc(&sim);
 
-#ifdef USE_CATALYST
-  CatalystAdaptor::Initialize(Catalyst_argc, &argv[argc-Catalyst_argc]);
-  std::cout << "CatalystInitialize" << std::endl;
-#endif
-#ifdef USE_ASCENT
-  AscentAdaptor::Initialize(Catalyst_argc, &argv[argc-Catalyst_argc], &sim);
-  std::cout << "AscentInitialize" << std::endl;
-#endif
+  InSitu::Initialize(Catalyst_argc, &argv[argc-Catalyst_argc], &sim);
 
   while (sim.gdel > TOL)
     {
     simulate_one_timestep(&sim);
 
-#ifdef USE_CATALYST
-    CatalystAdaptor::Execute(sim); // sim.iter*0.1, sim.iter*0.1, grid, attributes);
-#endif
-#ifdef USE_ASCENT
-    AscentAdaptor::Execute(sim); // sim.iter*0.1, sim.iter*0.1, grid, attributes);
+#if defined(USE_CATALYST) || defined(USE_ASCENT)
+    InSitu::Execute(sim); // sim.iter*0.1, sim.iter*0.1, grid, attributes);
 #endif
     }
 
@@ -104,12 +99,8 @@ int main(int argc, char *argv[])
 
   WriteFinalGrid(&sim);
 
-#ifdef USE_CATALYST
-  CatalystAdaptor::Finalize();
-#endif
-
-#ifdef USE_ASCENT
-  AscentAdaptor::Finalize();
+#if defined(USE_CATALYST) || defined(USE_ASCENT)
+  InSitu::Finalize();
 #endif
 
   FreeGridMemory(&sim);
@@ -118,4 +109,3 @@ int main(int argc, char *argv[])
 
   return (0);
 }
-

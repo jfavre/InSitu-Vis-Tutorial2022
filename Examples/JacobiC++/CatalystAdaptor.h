@@ -8,7 +8,7 @@
 #include <iostream>
 #include <string>
 
-namespace CatalystAdaptor
+namespace InSitu
 {
 static std::vector<std::string> filesToValidate;
 
@@ -20,8 +20,10 @@ static std::vector<std::string> filesToValidate;
  * `conduit_node`. However, this example shows that one can
  * indeed use Catalyst's C++ API, if the developer so chooses.
  */
-void Initialize(int argc, char* argv[])
+void Initialize(int argc, char* argv[], const simulation_data *sim)
 {
+  std::cout << "CatalystInitialize" << std::endl;
+
   conduit_cpp::Node node;
   for (int cc = 0; cc < argc; ++cc)
   {
@@ -51,7 +53,6 @@ void Initialize(int argc, char* argv[])
 
   // indicate that we want to load ParaView-Catalyst
   node["catalyst_load/implementation"].set_string("paraview");
-  node["catalyst_load/search_paths/paraview"] = PARAVIEW_IMPL_DIR;
 
   catalyst_status err = catalyst_initialize(conduit_cpp::c_node(&node));
   if (err != catalyst_status_ok)
@@ -139,12 +140,12 @@ void Execute(simulation_data& sim) //int cycle, double time, Grid& grid, Attribu
   // Conduit supports zero copy, allowing a Conduit Node to describe and
   // point to externally allocated data
   fields["temperature/values"].set_external(sim.Temp, (sim.bx + 2) * (sim.by + 2));
-/*
+
   fields["vtkGhostType/association"].set("vertex");
   fields["vtkGhostType/topology"].set("mesh");
   fields["vtkGhostType/volume_dependent"].set("false");
   fields["vtkGhostType/values"].set_external(sim.Ghost, (sim.bx + 2) * (sim.by + 2));
-  */
+
   catalyst_status err = catalyst_execute(conduit_cpp::c_node(&exec_params));
   if (err != catalyst_status_ok)
   {
