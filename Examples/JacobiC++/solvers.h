@@ -15,7 +15,7 @@ typedef struct
     int      resolution; // overall grid size not counting boundary walls.
     int      iter;
     double   gdel, *oldTemp, *Temp;
-    unsigned char *Ghost;
+    unsigned char *Ghost; // ghost-point array
     double    *cx, *cy;
     int      local_extents[6];
     std::string mesh;  // "uniform", "rectilinear", "structured", "unstructured"

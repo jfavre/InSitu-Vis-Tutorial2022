@@ -79,8 +79,8 @@ void MPI_Partition(int PartitioningDimension, simulation_data *sim)
 void AllocateGridMemory(simulation_data *sim)
 {
   int i;
-  sim->oldTemp = (double *)calloc((sim->bx + 2) * (sim->by + 2), sizeof(double));
-  sim->Temp    = (double *)calloc((sim->bx + 2) * (sim->by + 2), sizeof(double));
+  sim->oldTemp = (double *)calloc(       (sim->bx + 2) * (sim->by + 2), sizeof(double));
+  sim->Temp    = (double *)calloc(       (sim->bx + 2) * (sim->by + 2), sizeof(double));
   sim->Ghost   = (unsigned char *)calloc((sim->bx + 2) * (sim->by + 2), sizeof(unsigned char));
   sim->cx      = (double *)malloc(sizeof(double) * (sim->bx + 2));
   sim->cy      = (double *)malloc(sizeof(double) * (sim->by + 2));
@@ -147,6 +147,7 @@ void FreeGridMemory(simulation_data *sim)
   free(sim->cy);
   free(sim->explicit_cx);
   free(sim->explicit_cy);
+  free(sim->Ghost);
 }
 
 #define DUPLICATECELL 1
@@ -163,12 +164,12 @@ void set_initial_bc(simulation_data *sim)
   int i;
   double x;
   memset(sim->Ghost, 0, sizeof(unsigned char)*(sim->bx+2)*(sim->by+2));
-  memset(sim->Ghost, HIDDENPOINT, sizeof(unsigned char)*(sim->bx+2));
-  memset(&sim->Ghost[(sim->by+1)*(sim->bx+2)], HIDDENPOINT, sizeof(unsigned char)*(sim->bx+2));
+  memset(sim->Ghost, DUPLICATEPOINT, sizeof(unsigned char)*(sim->bx+2));
+  memset(&sim->Ghost[(sim->by+1)*(sim->bx+2)], DUPLICATEPOINT, sizeof(unsigned char)*(sim->bx+2));
   
   for (i = 1; i < sim->by+1; i++)
     {
-    sim->Ghost[i*(sim->bx+2)] = sim->Ghost[i*(sim->bx+2)+sim->by+1] = HIDDENPOINT;
+    sim->Ghost[i*(sim->bx+2)] = sim->Ghost[i*(sim->bx+2)+sim->by+1] = DUPLICATEPOINT;
     }
     
   //memset(sim->Temp, 0, sizeof(double)*(sim->bx+2)*(sim->by+2));
@@ -231,7 +232,12 @@ double update_jacobi(simulation_data *sim)
 void exchange_ghost_lines(simulation_data *sim)
 {
   MPI_Status status;
-
+  /*
+int MPI_Sendrecv(const void *sendbuf, int sendcount, MPI_Datatype sendtype,
+                 int dest, int sendtag,
+                 void *recvbuf, int recvcount, MPI_Datatype recvtype,
+                 int source, int recvtag, MPI_Comm comm, MPI_Status * status)
+                 */
 // send my last computed row north and receive from south my south boundary wall
   MPI_Sendrecv(&sim->Temp[0+sim->by*(sim->bx+2)], 1, rowtype, sim->south, 0,
                &sim->Temp[0+0*(sim->bx+2)], 1, rowtype, sim->north, 0,
