@@ -4,7 +4,11 @@ mkdir buildCatalyst
 cd buildCatalyst
 Version 5.10:  ccmake -S .. -DINSITU=Catalyst -Dcatalyst_DIR=$PARAVIEW_INSTALL_DIR/lib/cmake/paraview-5.10/catalyst
 
-Version 5.11:  ccmake -S .. -DINSITU=Catalyst -Dcatalyst_DIR=${EBROOTCATALYST}/lib/cmake/catalyst-2.0
+Version 5.11:  ccmake -S .. \
+                 -DCMAKE_BUILD_TYPE=Release \
+                 -DINSITU=Catalyst \
+                 -Dcatalyst_DIR=${EBROOTCATALYST}/lib/cmake/catalyst-2.0
+
 Version 5.11 runtime env: export CATALYST_IMPLEMENTATION_PATHS=/local/apps/ParaView/5.11.1/lib/catalyst
 
 env PARAVIEW_LOG_CATALYST_VERBOSITY=INFO  ./bin/pjacobi catalyst_state.py 
