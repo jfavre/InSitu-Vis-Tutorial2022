@@ -83,8 +83,9 @@ int main(int argc, char *argv[])
 
   set_initial_bc(&sim);
 
+#if defined(USE_CATALYST) || defined(USE_ASCENT)
   InSitu::Initialize(Catalyst_argc, &argv[argc-Catalyst_argc], &sim);
-
+#endif
   while (sim.gdel > TOL)
     {
     simulate_one_timestep(&sim);

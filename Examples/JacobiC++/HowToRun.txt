@@ -2,14 +2,13 @@
 
 mkdir buildCatalyst
 cd buildCatalyst
-Version 5.10:  ccmake -S .. -DINSITU=Catalyst -Dcatalyst_DIR=$PARAVIEW_INSTALL_DIR/lib/cmake/paraview-5.10/catalyst
+# on Piz Daint
+module load daint-gpu CMake module load Catalyst/2.0.0-CrayGNU-21.09-rc3
 
 Version 5.11:  ccmake -S .. \
                  -DCMAKE_BUILD_TYPE=Release \
                  -DINSITU=Catalyst \
                  -Dcatalyst_DIR=${EBROOTCATALYST}/lib/cmake/catalyst-2.0
-
-Version 5.11 runtime env: export CATALYST_IMPLEMENTATION_PATHS=/local/apps/ParaView/5.11.1/lib/catalyst
 
 env PARAVIEW_LOG_CATALYST_VERBOSITY=INFO  ./bin/pjacobi catalyst_state.py 
 
@@ -26,11 +25,17 @@ make && ./bin/pjacobi --res=32 --mesh=unstructured catalyst_state.py
 
 mkdir buildAscent
 cd buildAscent
+# on PIz Daint
+module load daint-gpu CMake cudatoolkit Ascent/0.9.1-CrayGNU-21.09
+
+# locally on my laptop, I use
 export LD_LIBRARY_PATH=/local/apps/Ascent/install/ascent-v0.9.1/lib:/local/apps/Ascent/install/vtk-m-v1.9.1/lib
 
 ccmake -S .. \
   -DCMAKE_BUILD_TYPE=Release \
-  -DINSITU=Ascent \
+  -DINSITU=Ascent 
+
+# if compiled locally, add
   -DAscent_DIR=/local/apps/Ascent/install/ascent-v0.9.1/lib/cmake/ascent
 
 get the files {ascent_actions.yaml,plot_actions.yaml} in your runtime directory

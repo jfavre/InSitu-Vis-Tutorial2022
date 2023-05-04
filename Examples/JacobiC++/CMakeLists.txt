@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.13)
-project (PJACOBIV2 CXX)
+project (PJACOBIV2 C CXX)
 
 include (GNUInstallDirs)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/${CMAKE_INSTALL_BINDIR}")
@@ -11,7 +11,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 # Since this example uses MPI, find and link against it.
-find_package(MPI COMPONENTS CXX)
+find_package(MPI COMPONENTS C CXX)
 if (NOT MPI_FOUND)
   message(STATUS
     "Skipping example: ${CMAKE_PROJECT_NAME} requires MPI.")
