@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.13)
-project (PJACOBIV2 C CXX)
+project (PJACOBIV2 CXX)
 
 include (GNUInstallDirs)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/${CMAKE_INSTALL_BINDIR}")
@@ -11,7 +11,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 # Since this example uses MPI, find and link against it.
-find_package(MPI COMPONENTS C CXX)
+find_package(MPI COMPONENTS CXX)
 if (NOT MPI_FOUND)
   message(STATUS
     "Skipping example: ${CMAKE_PROJECT_NAME} requires MPI.")
@@ -19,32 +19,26 @@ if (NOT MPI_FOUND)
 endif ()
 
 set(C_SRCS
-solvers.cxx
-JacobiDriver.cxx
+  solvers.cxx
+  JacobiDriver.cxx
 )
 
 add_executable(pjacobi ${C_SRCS})
-target_link_libraries(pjacobi PRIVATE MPI::MPI_C MPI::MPI_CXX m)
+target_link_libraries(pjacobi PRIVATE MPI::MPI_CXX m)
 
 set(INSITU None CACHE STRING "Enable in-situ support")
 set_property(CACHE INSITU PROPERTY STRINGS None Catalyst Ascent)
 
 if(INSITU STREQUAL "Catalyst")
-    find_package(catalyst REQUIRED PATHS "${ParaView_DIR}/catalyst")
-    # we only need C++ compilers if we're building the Adaptor
-    enable_language(CXX)
-
+  find_package(catalyst REQUIRED PATHS)
   target_compile_definitions(pjacobi
     PRIVATE
-      "PARAVIEW_IMPL_DIR=\"${ParaView_CATALYST_DIR}\""
       USE_CATALYST=1)
   target_link_libraries(pjacobi PRIVATE catalyst::catalyst)
 elseif(INSITU STREQUAL "Ascent")
-    find_package(Ascent REQUIRED PATHS "/apps/daint/UES/Ascent/ascent-install/l
-ib/cmake/ascent")
-    target_compile_definitions(pjacobi
-	    PRIVATE
-	    USE_ASCENT=1
-	    )
-    target_link_libraries(pjacobi PRIVATE ascent::ascent_mpi)
+  find_package(Ascent REQUIRED PATHS "/apps/daint/UES/Ascent/ascent-install/lib/cmake/ascent")
+  target_compile_definitions(pjacobi
+    PRIVATE
+      USE_ASCENT=1)
+  target_link_libraries(pjacobi PRIVATE ascent::ascent_mpi)
 endif()

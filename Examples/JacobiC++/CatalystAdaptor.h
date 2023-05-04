@@ -53,7 +53,7 @@ void Initialize(int argc, char* argv[], const simulation_data *sim)
 
   // indicate that we want to load ParaView-Catalyst
   node["catalyst_load/implementation"].set_string("paraview");
-
+  // the env variable CATALYST_IMPLEMENTATION_PATHS should indicate where to find the ParaView specific implementation
   catalyst_status err = catalyst_initialize(conduit_cpp::c_node(&node));
   if (err != catalyst_status_ok)
   {
