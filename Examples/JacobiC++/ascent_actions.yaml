@@ -5,7 +5,7 @@
   triggers:
     t1:
       params:
-        condition: "cycle() % 100 == 0"
+        condition: "cycle() % 1000 == 0"
         actions_file: "plot_actions.yaml"
 
 

@@ -12,3 +12,11 @@
           field: "temperature"
         p2:
           type: "mesh"
+-
+  action: "add_extracts"
+  extracts:
+    e1:
+      type: "relay"
+      params:
+        path: "mesh"
+        protocol: "blueprint/mesh/hdf5"

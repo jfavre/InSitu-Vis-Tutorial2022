@@ -15,6 +15,7 @@ renderView1.CameraParallelScale = 16.252051019206938
 LoadPalette(paletteName='WhiteBackground')
 
 reader = TrivialProducer(registrationName='grid')
+
 rep = Show(reader, renderView1)
 rep.Representation = 'Outline'
 ColorBy(rep, ['POINTS', ''])
@@ -39,8 +40,8 @@ ResetCamera()
 
 pNG1 = CreateExtractor('PNG', renderView1, registrationName='PNG1')
 pNG1.Trigger = 'TimeStep'
-pNG1.Trigger.Frequency = 200
-pNG1.Writer.FileName = '/tmp/view-{timestep:06d}{camera}.png'
+pNG1.Trigger.Frequency = 2000
+pNG1.Writer.FileName = '/scratch/snx3000/jfavre/Catalyst/test/images/' + 'view-{timestep:06d}{camera}.png'
 pNG1.Writer.ImageResolution = [800,800]
 pNG1.Writer.Format = 'PNG'
 
@@ -48,9 +49,8 @@ pNG1.Writer.Format = 'PNG'
 
 vTP1 = CreateExtractor('VTPD', reader, registrationName='VTPD1')
 vTP1.Trigger = 'TimeStep'
-vTP1.Trigger.Frequency = 500
-vTP1.Writer.FileName = 'dataset_{timestep:06d}.vtpd'
-
+vTP1.Trigger.Frequency = 10000
+vTP1.Writer.FileName = 'datasets/dataset_{timestep:06d}.vtpd'
 
 SetActiveSource(reader)
 
@@ -60,7 +60,7 @@ options.GlobalTrigger = 'TimeStep'
 options.EnableCatalystLive = 0
 options.CatalystLiveURL = ':22222'
 options.CatalystLiveTrigger = 'TimeStep'
-
+options.ExtractsOutputDirectory = '/scratch/snx3000/jfavre/Catalyst/test'
 # ------------------------------------------------------------------------------
 if __name__ == '__main__':
     from paraview.simple import SaveExtractsUsingCatalystOptions

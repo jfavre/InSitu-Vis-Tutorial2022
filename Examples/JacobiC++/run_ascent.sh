@@ -15,9 +15,6 @@
 
 module load daint-gpu
 module swap PrgEnv-cray PrgEnv-gnu
-module load cray-hdf5-parallel
-module use /scratch/snx3000tds/jfavre/daint/modules/all
-
 module load Ascent/0.9.1-CrayGNU-21.09
 
 mkdir -p $SCRATCH/Ascent/test
@@ -25,4 +22,6 @@ pushd    $SCRATCH/Ascent/test
 
 cp /users/jfavre/Projects/InSitu/InSitu-Vis-Tutorial2022/Examples/JacobiC++/{ascent_actions.yaml,plot_actions.yaml} $SCRATCH/Ascent/test
 
-srun -n $SLURM_NNODES  /users/jfavre/Projects/InSitu/InSitu-Vis-Tutorial2022/Examples/JacobiC++/buildAscent/bin/pjacobi  --res=256 --mesh=uniform
+srun -n $SLURM_NNODES  /users/jfavre/Projects/InSitu/InSitu-Vis-Tutorial2022/Examples/JacobiC++/buildAscent/bin/pjacobi  --res=64 --mesh=uniform
+
+cp Jacobi.* /users/jfavre/Projects/InSitu/InSitu-Vis-Tutorial2022/Examples/JacobiC++
