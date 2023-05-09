@@ -20,8 +20,8 @@ void Initialize(int argc, char* argv[], const simulation_data *sim)
   std::cout << "AscentInitialize.........................................\n";
   conduit::Node ascent_options;
   ascent_options["mpi_comm"] = MPI_Comm_c2f(MPI_COMM_WORLD);
-  //ascent_opts["ghost_field_name"].append() = "cell_ghosts";
-  ascent_options["ghost_field_name"].append() = "point_ghosts";
+  // default name for ghost field is used
+  // ascent_options["ghost_field_name"].append() = "ascent_ghosts";
   ascent.open(ascent_options);
   
   if(sim->mesh == "rectilinear")
@@ -35,16 +35,18 @@ void Initialize(int argc, char* argv[], const simulation_data *sim)
     //std::cout << "Uniform Grid dimensions =[" << (sim.local_extents[1] - sim.local_extents[0] + 1) << ", " << (sim.local_extents[3] - sim.local_extents[2] + 1) << ", 1]"<< std::endl;
     mesh["coordsets/coords/dims/i"].set(sim->local_extents[1] - sim->local_extents[0] + 1);
     mesh["coordsets/coords/dims/j"].set(sim->local_extents[3] - sim->local_extents[2] + 1);
-    // do not specify the 3rd dimension with a dim of 1, a z_origin, and a z_spacing
-    
+    mesh["coordsets/coords/dims/k"].set(1);
+
     //std::cout << "Uniform Grid Origin =[" << sim.cx[0] << ", " << sim.cy[0] << ", 0.]"<< std::endl;
     mesh["coordsets/coords/origin/x"].set(sim->cx[0]);
     mesh["coordsets/coords/origin/y"].set(sim->cy[0]);
+    mesh["coordsets/coords/origin/z"].set(0.0);
     mesh["coordsets/coords/type"].set(sim->mesh);
 
     float spacing = 1.0/(sim->resolution+1.0);
     mesh["coordsets/coords/spacing/dx"].set(spacing);
     mesh["coordsets/coords/spacing/dy"].set(spacing);
+    mesh["coordsets/coords/spacing/dz"].set(1);
     }
 
   else if((sim->mesh == "structured") || (sim->mesh == "unstructured"))
@@ -77,11 +79,11 @@ void Initialize(int argc, char* argv[], const simulation_data *sim)
   mesh["fields/temperature/volume_dependent"].set("false");
   mesh["fields/temperature/values"].set_external(sim->Temp, (sim->bx + 2) * (sim->by + 2));
   
-  mesh["fields/point_ghosts/association"].set("vertex");
-  mesh["fields/point_ghosts/type"].set("scalar");
-  mesh["fields/point_ghosts/topology"].set("mesh");
-  mesh["fields/point_ghosts/volume_dependent"].set("false");
-  mesh["fields/point_ghosts/values"].set_external(sim->Ghost, (sim->bx + 2) * (sim->by + 2));
+  mesh["fields/ascent_ghosts/association"].set("vertex");
+  mesh["fields/ascent_ghosts/type"].set("scalar");
+  mesh["fields/ascent_ghosts/topology"].set("mesh");
+  mesh["fields/ascent_ghosts/volume_dependent"].set("false");
+  mesh["fields/ascent_ghosts/values"].set_external(sim->Ghost, (sim->bx + 2) * (sim->by + 2));
   
   conduit::Node verify_info;
   if (!conduit::blueprint::mesh::verify(mesh, verify_info))
@@ -89,7 +91,7 @@ void Initialize(int argc, char* argv[], const simulation_data *sim)
     // verify failed, print error message
     CONDUIT_INFO("blueprint verify failed!" + verify_info.to_json());
     }
-  else CONDUIT_INFO("blueprint verify success!" + verify_info.to_json());
+  //else CONDUIT_INFO("blueprint verify success!" + verify_info.to_json());
 
   conduit::Node &add_action = actions.append();
   
@@ -106,7 +108,7 @@ void Execute(simulation_data& sim) //int cycle, double time, Grid& grid, Attribu
 {
   mesh["state/cycle"].set(sim.iter);
   mesh["state/time"].set(sim.iter*0.1);
-
+  mesh["state/rank"].set(sim.par_rank);
   ascent.publish(mesh);
   ascent.execute(actions);
 }
