@@ -3,7 +3,7 @@
 #SBATCH --nodes=1
 #SBATCH --ntasks=4
 #SBATCH --constraint=gpu
-#SBATCH --account=$USER
+#SBATCH --account=``$USER``
 ##SBATCH --reservation=insitu
 #SBATCH --exclusive
 #SBATCH --time=00:10:00
@@ -21,6 +21,6 @@ export CATALYST_IMPLEMENTATION_PATHS=$EBROOTPARAVIEW/lib64/catalyst
 mkdir -p $SCRATCH/Catalyst/test
 pushd    $SCRATCH/Catalyst/test
 
-cp /users/jfavre/Projects/InSitu/InSitu-Vis-Tutorial2022/Examples/JacobiC++/catalyst_state.py $SCRATCH/Catalyst/test
+cp $PWD/catalyst_state.py $SCRATCH/Catalyst/test
 
-srun -n $SLURM_NNODES  /users/jfavre/Projects/InSitu/InSitu-Vis-Tutorial2022/Examples/JacobiC++/buildCatalyst/bin/pjacobi  --res=256 --mesh=uniform catalyst_state.py
+srun -n $SLURM_NNODES  $PWD/buildCatalyst/bin/pjacobi  --res=256 --mesh=uniform catalyst_state.py
