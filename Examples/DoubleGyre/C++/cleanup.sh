@@ -1,2 +1,3 @@
-rm -rf build/*png
+rm -rf buildAscent
 rm -rf *png
+rm slurm*

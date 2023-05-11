@@ -5,7 +5,6 @@
 #include <string>
 #include <algorithm>
 #include <cassert>
-#include <numbers>
 
 #include "double_gyre.h"
 
@@ -37,8 +36,8 @@ DoubleGyre::AllocateGrid(int xresolution, int yresolution)
   this->vel_z.resize(this->xres * this->yres);
   std::fill(this->vel_z.begin(), this->vel_z.end(), 0.0);
         
-  this->A = 0.1 * std::numbers::pi;
-  this->w = 2.0 * std::numbers::pi/10.;
+  this->A = 0.1 * M_PI;
+  this->w = 2.0 * M_PI/10.;
   this->E = 0.25;
 }
 
@@ -51,10 +50,10 @@ void DoubleGyre::compute_step(void)
   for(auto iy=0; iy < this->yres; iy++)
     for(auto ix=0; ix < this->xres; ix++)
       {
-      Ft = (At * this->xaxis[ix]*this->xaxis[ix] + Bt * this->xaxis[ix]) * std::numbers::pi;
+      Ft = (At * this->xaxis[ix]*this->xaxis[ix] + Bt * this->xaxis[ix]) * M_PI;
       fft = 2.0 * At * this->xaxis[ix] + Bt;
-      this->vel_x[iy*xres + ix] = -this->A * sin(Ft) * cos(std::numbers::pi*this->yaxis[iy]);
-      this->vel_y[iy*xres + ix] =  this->A * cos(Ft) * sin(std::numbers::pi*this->yaxis[iy])*fft;
+      this->vel_x[iy*xres + ix] = -this->A * sin(Ft) * cos(M_PI*this->yaxis[iy]);
+      this->vel_y[iy*xres + ix] =  this->A * cos(Ft) * sin(M_PI*this->yaxis[iy])*fft;
       }
   this->iteration++;
 }

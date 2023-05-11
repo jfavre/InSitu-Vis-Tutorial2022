@@ -20,7 +20,6 @@
 #include <vector>
 #include <algorithm>
 #include <cassert>
-#include <numbers>
 
 #include "double_gyre.h"
 using double_gyre::simulation;

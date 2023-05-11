@@ -15,7 +15,12 @@ set(_SRCS
   double_gyre.cxx
 )
 
-find_package(OpenMP)
+find_package(MPI COMPONENTS C CXX)
+if (NOT MPI_FOUND)
+  message(STATUS
+    "Skipping example: ${CMAKE_PROJECT_NAME} requires MPI.")
+  return ()
+endif ()
 
 set(INSITU None CACHE STRING "Enable in-situ support")
 set_property(CACHE INSITU PROPERTY STRINGS None Catalyst Ascent)
