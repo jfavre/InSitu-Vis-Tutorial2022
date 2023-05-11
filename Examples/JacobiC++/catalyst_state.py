@@ -1,3 +1,6 @@
+import os
+basename = os.getenv('SCRATCH')
+
 #### import the simple module from the paraview
 from paraview.simple import *
 #### disable automatic camera reset on 'Show'
@@ -43,7 +46,7 @@ ResetCamera()
 pNG1 = CreateExtractor('PNG', renderView1, registrationName='PNG1')
 pNG1.Trigger = 'TimeStep'
 pNG1.Trigger.Frequency = 2000
-pNG1.Writer.FileName = '/scratch/snx3000/jfavre/Catalyst/test/images/' + 'view-{timestep:06d}{camera}.png'
+pNG1.Writer.FileName = basename + '/Catalyst/test/images/' + 'view-{timestep:06d}{camera}.png'
 pNG1.Writer.ImageResolution = [800,800]
 pNG1.Writer.Format = 'PNG'
 
@@ -62,7 +65,7 @@ options.GlobalTrigger = 'TimeStep'
 options.EnableCatalystLive = 0
 options.CatalystLiveURL = ':22222'
 options.CatalystLiveTrigger = 'TimeStep'
-options.ExtractsOutputDirectory = '/scratch/snx3000/jfavre/Catalyst/test'
+options.ExtractsOutputDirectory = basename + '/Catalyst/test'
 # ------------------------------------------------------------------------------
 if __name__ == '__main__':
     from paraview.simple import SaveExtractsUsingCatalystOptions
