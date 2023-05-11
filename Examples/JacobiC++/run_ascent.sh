@@ -15,10 +15,11 @@ module load Ascent/0.9.1-CrayGNU-21.09
 
 mkdir -p $SCRATCH/Ascent/test
 
+cwd=$PWD
 cp $PWD/{ascent_actions.yaml,plot_actions.yaml} $SCRATCH/Ascent/test
 
 pushd    $SCRATCH/Ascent/test
-srun -n $SLURM_NNODES  $PWD/buildAscent/bin/pjacobi  --res=256 --mesh=uniform
+srun -n $SLURM_NNODES  $cwd/buildAscent/bin/pjacobi  --res=128 --mesh=uniform
 
 popd
 cp $SCRATCH/Ascent/test/Jacobi.* .

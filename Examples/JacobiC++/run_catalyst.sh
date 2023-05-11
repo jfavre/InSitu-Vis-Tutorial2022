@@ -19,8 +19,5 @@ module load ParaView/5.11.1-CrayGNU-21.09-EGL
 export CATALYST_IMPLEMENTATION_PATHS=$EBROOTPARAVIEW/lib64/catalyst
 
 mkdir -p $SCRATCH/Catalyst/test
-pushd    $SCRATCH/Catalyst/test
 
-cp $PWD/catalyst_state.py $SCRATCH/Catalyst/test
-
-srun -n $SLURM_NNODES  $PWD/buildCatalyst/bin/pjacobi  --res=256 --mesh=uniform catalyst_state.py
+srun -n $SLURM_NNODES  $PWD/buildCatalyst/bin/pjacobi  --res=128 --mesh=uniform $PWD/catalyst_state.py
