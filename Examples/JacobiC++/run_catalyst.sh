@@ -3,7 +3,7 @@
 #SBATCH --nodes=1
 #SBATCH --ntasks=4
 #SBATCH --constraint=gpu
-#SBATCH --account=``$USER``
+#SBATCH --account=csstaff
 ##SBATCH --reservation=insitu
 #SBATCH --exclusive
 #SBATCH --time=00:10:00
