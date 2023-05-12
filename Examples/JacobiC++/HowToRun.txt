@@ -3,7 +3,8 @@
 mkdir buildCatalyst
 cd buildCatalyst
 # on Piz Daint
-module load daint-gpu CMake module load Catalyst/2.0.0-CrayGNU-21.09-rc3
+module load daint-gpu CMake
+module load Catalyst/2.0.0-CrayGNU-21.09-rc3
 
 Version 5.11:  ccmake -S .. \
                  -DCMAKE_BUILD_TYPE=Release \
