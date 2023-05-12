@@ -38,15 +38,15 @@ def catalyst_execute(params):
 
 vTP1 = CreateExtractor('VTPD', tp, registrationName='VTPD1')
 vTP1.Trigger = 'TimeStep'
-vTP1.Trigger.Frequency = 5
-vTP1.Writer.FileName = 'particles_{timestep:06d}.vtpd'
+vTP1.Trigger.Frequency = 50
+vTP1.Writer.FileName = 'LULESH-grid_{timestep:06d}.vtpd'
 
 # create extractor
 pNG1 = CreateExtractor('PNG', renderView1, registrationName='PNG1')
 pNG1.Trigger = 'TimeStep'
-pNG1.Trigger.Frequency = 2
+pNG1.Trigger.Frequency = 50
 
-pNG1.Writer.FileName = 'RenderView1_{timestep:06d}{camera}.png'
+pNG1.Writer.FileName = 'Velocity_{timestep:06d}{camera}.png'
 pNG1.Writer.ImageResolution = [512,512]
 pNG1.Writer.Format = 'PNG'
 

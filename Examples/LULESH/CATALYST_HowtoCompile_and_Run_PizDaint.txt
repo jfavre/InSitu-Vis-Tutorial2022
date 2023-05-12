@@ -16,18 +16,15 @@
 #
 ##############################################################################
 # Compile and run on Piz Daint
+# tested Thu 11 May 18:28:00 CEST 2023
 
-module load daint-gpu CMake ParaView
-mkdir buildCatalyst
-cd buildCatalyst
+module load daint-gpu CMake Catalyst
 
-cmake \
+cmake -S . -B buildCatalyst \
   -DINSITU=Catalyst \
-  -Dcatalyst_DIR=${EBROOTPARAVIEW}/lib/cmake/paraview-5.10/catalyst \
   -DCMAKE_CXX_COMPILER=CC \
-  ..
 
-make
+cmake --build buildCatalyst
 
 ##############################################################################
 # Run with a Catalyst script

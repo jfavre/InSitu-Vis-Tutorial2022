@@ -16,7 +16,7 @@ if (WITH_OPENMP)
   find_package(OpenMP REQUIRED)
 endif()
 if (WITH_MPI)
-  find_package(MPI COMPONENTS CXX)
+  find_package(MPI COMPONENTS C CXX)
 endif()
 
 set(LULESH_SOURCES
@@ -38,7 +38,6 @@ target_compile_definitions(lulesh2.0
 target_link_libraries(lulesh2.0 PRIVATE MPI::MPI_CXX)
 
 if(INSITU STREQUAL "Catalyst")
-	find_package(catalyst REQUIRED PATHS "$ENV{EBROOTPARAVIEW}/lib/cmake/paraview-5.10")
 	target_compile_definitions(lulesh2.0
 	    PRIVATE
 	    "PARAVIEW_IMPL_DIR=\"${ParaView_DIR}\""
@@ -46,7 +45,7 @@ if(INSITU STREQUAL "Catalyst")
 	    )
     target_link_libraries(lulesh2.0 PRIVATE catalyst::catalyst)
 elseif(INSITU STREQUAL "Ascent")
-    find_package(Ascent REQUIRED PATHS "/apps/daint/UES/Ascent/ascent-install/lib/cmake/ascent")
+    find_package(Ascent REQUIRED)
     target_compile_definitions(lulesh2.0
 	    PRIVATE
 	    VIZ_ASCENT=1
