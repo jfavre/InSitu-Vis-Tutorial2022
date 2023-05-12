@@ -38,7 +38,8 @@ target_compile_definitions(lulesh2.0
 target_link_libraries(lulesh2.0 PRIVATE MPI::MPI_CXX)
 
 if(INSITU STREQUAL "Catalyst")
-	target_compile_definitions(lulesh2.0
+	find_package(Catalyst REQUIRED)
+    target_compile_definitions(lulesh2.0
 	    PRIVATE
 	    "PARAVIEW_IMPL_DIR=\"${ParaView_DIR}\""
 	    VIZ_CATALYST=1

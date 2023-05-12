@@ -17,18 +17,11 @@
 ##############################################################################
 # Compile and run on Piz Daint
 
-module load daint-gpu CMake Ascent cray-hdf5-parallel
+module load daint-gpu CMake cudatoolkit/21.3_11.2 Ascent/0.9.1-CrayGNU-21.09
 
-mkdir buildAscent
-cd buildAscent
-cmake \
-  -DCMAKE_BUILD_TYPE=Release \
-  -DCMAKE_CXX_COMPILER=CC \
-  -DINSITU=Ascent \
-  -DHDF5_INCLUDE_DIR=$CRAY_HDF5_PARALLEL_PREFIX/include \
-  ..
+cmake -S . -B buildAscent -DINSITU=Ascent -DCMAKE_CXX_COMPILER=CC
 
-make -j
+cmake --build buildAscent
 
 ##############################################################################
 # Run with Ascent
