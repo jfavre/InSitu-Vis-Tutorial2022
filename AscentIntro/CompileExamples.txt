@@ -1,0 +1,16 @@
+srun -C gpu -n 1 -A crs02 --time=00:30:00 -p debug --pty bash
+
+module load daint-gpu Ascent cudatoolkit/21.3_11.2 cray-hdf5-parallel
+
+cd $EBROOTASCENT/examples/ascent/tutorial/ascent_intro
+
+cp -r cpp /dev/shm/
+
+cd /dev/shm/cpp/
+
+sed -i '34s/$/ -L${CRAY_HDF5_PARALLEL_PREFIX}\/lib/' Makefile 
+
+make -j8 ASCENT_DIR=$EBROOTASCENT
+
+./conduit_example1
+
