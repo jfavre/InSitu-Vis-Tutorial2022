@@ -1,3 +1,5 @@
+import os
+pv_ascent_src = os.getenv('EBROOTASCENT') + '/examples/ascent/paraview-vis/paraview_ascent_source.py'
 # Same Python interpreter for all time steps
 # We use count for one time initializations
 try:
@@ -16,9 +18,7 @@ if count == 0:
         GetColorTransferFunction, GetActiveView, GetScalarBar, ResetCamera,\
         Render, SaveScreenshot, GetActiveCamera, GetProperty, CreateRenderView
     from paraview import catalyst
-    #fname="/apps/daint/UES/Ascent/ascent-install/examples/ascent/paraview-vis/paraview_ascent_source.py"
-    fname="/local/apps/Ascent/ascent-install/examples/ascent/paraview-vis/paraview_ascent_source.py"
-    LoadPlugin(fname, remote=True, ns=globals())
+    LoadPlugin(pv_ascent_src, remote=True, ns=globals())
     ascentSource = AscentSource()
     view = CreateRenderView()
     view.ViewSize = [1024, 1024]
