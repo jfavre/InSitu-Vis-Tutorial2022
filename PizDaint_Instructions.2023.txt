@@ -1,0 +1,20 @@
+ssh course??@ela.cscs.ch
+
+ssh-keygen -t ed25519
+cd .ssh
+cp id_ed25519.pub authorized_keys
+
+cp /users/jfavre/jupyterlab-cscs.env .
+
+ssh daint
+ln -s $SCRATCH scratch
+git clone https://github.com/jfavre/InSitu-Vis-Tutorial2022
+chmod +x InSitu-Vis-Tutorial2022/AscentIntro/notebooks/cleanup.sh
+chmod +x InSitu-Vis-Tutorial2022/Examples/DoubleGyre/Python/cleanup.sh
+chmod +x InSitu-Vis-Tutorial2022/Examples/DoubleGyre/C++/cleanup.sh
+chmod +x InSitu-Vis-Tutorial2022/Examples/JacobiC++/cleanup.sh
+cd InSitu-Vis-Tutorial2022/Examples/JacobiC++
+sed -i s^csstaff^crs02^g run_ascent.sh
+
+module load cray-python
+pip install ipywidgets==7.6.5
