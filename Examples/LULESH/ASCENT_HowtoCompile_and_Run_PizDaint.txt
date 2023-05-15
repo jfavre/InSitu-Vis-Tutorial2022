@@ -27,4 +27,4 @@ cmake --build buildAscent
 # Run with Ascent
 
 cd Ascent
-sbatch run_lulesh_Ascent.sh
+sbatch -A`id -gn` run_lulesh_Ascent.sh
