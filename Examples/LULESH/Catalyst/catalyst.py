@@ -1,5 +1,6 @@
 from paraview.simple import *
 import os, os.path
+basename = os.getenv('SCRATCH')
 
 # A trivial pipeline.
 
@@ -55,6 +56,7 @@ options = catalyst.Options()
 options.GlobalTrigger = 'TimeStep'
 options.EnableCatalystLive = 1
 options.CatalystLiveTrigger = 'TimeStep'
+options.ExtractsOutputDirectory = basename + '/Lulesh/Catalyst'
 
 # ------------------------------------------------------------------------------
 if __name__ == '__main__':

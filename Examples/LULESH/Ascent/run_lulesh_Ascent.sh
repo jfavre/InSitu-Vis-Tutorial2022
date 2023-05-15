@@ -15,13 +15,13 @@
 
 export OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK
 
-mkdir $SCRATCH/Lulesh
+mkdir -p $SCRATCH/Lulesh/Ascent
 
-cp ../buildAscent/bin/lulesh2.0 $SCRATCH/Lulesh
+cp ../buildAscent/bin/lulesh2.0 $SCRATCH/Lulesh/Ascent
 
 # enable a custom scene description
-cp ascent_actions.yaml trigger_ascent_actions.yaml  $SCRATCH/Lulesh
+cp ascent_actions.yaml trigger_ascent_actions.yaml  $SCRATCH/Lulesh/Ascent
 #cp trigger_isocontours_actions.yaml  $SCRATCH/Lulesh
 
-pushd $SCRATCH/Lulesh
+pushd $SCRATCH/Lulesh/Ascent
 srun ./lulesh2.0 -s 30 -p -i 1000
