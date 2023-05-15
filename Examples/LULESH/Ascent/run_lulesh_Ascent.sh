@@ -11,7 +11,7 @@
 #SBATCH --constraint=gpu
 #SBATCH --hint=nomultithread
 
-# should run one task per node becasue Asent needs a dedicated CUDA node per task
+# should run one task per node because Ascent needs a dedicated CUDA node per task
 
 export OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK
 
