@@ -13,7 +13,7 @@
 ##############################################################################
 import sys, math
 import numpy as np
-
+import adios2
 from mpi4py import MPI
 
 class Simulation:
@@ -39,15 +39,29 @@ class Simulation:
     def Initialize(self):
         """ 2 additional boundary points are added. Iterations will only touch
         the internal grid points.
-        A mesh description using Conduit is prepared, sharing the scalar field
-        array via zero-copy
         """
         self.rmesh_dims = [self.yres + 2, self.xres + 2]
         print("dimensions = ", self.rmesh_dims)
         self.v = np.zeros(self.rmesh_dims) # includes 2 ghosts
-        #self.v = np.ones(self.rmesh_dims) * self.par_rank
-        self.vnew = np.zeros([self.yres, self.xres])
+        #self.vnew = np.zeros([self.yres, self.xres])
         self.set_initial_bc()
+        
+    def Initialize_ADIOS(self):
+        self.adios = adios2.ADIOS(configFile="adios2.xml", comm=self.comm)
+        #self.io    = self.adios.DeclareIO("writerIO")
+        self.io    = self.adios.DeclareIO("InTransit-vis")
+        self.T_id  = self.io.DefineVariable("temperature", self.v,
+                                            [1, self.xres+2, self.xres+2], # Shape of global object
+                                            [0, self.par_rank * self.yres, 0], # Where to begin writing
+                                            [1, self.yres+2, self.xres+2], # Where to end writing
+                                            adios2.ConstantDims)
+        self.step_id  = self.io.DefineVariable("step", np.array([1], dtype=np.int32))
+        self.io.DefineAttribute("Fides_Data_Model", "uniform")
+        self.io.DefineAttribute("Fides_Origin", np.array([0, 0., 0.]))
+        self.io.DefineAttribute("Fides_Spacing", np.array([self.dx, self.dx, self.dx]))
+        self.io.DefineAttribute("Fides_Dimension_Variable", "temperature")
+        self.io.DefineAttribute("Fides_Variable_List", ["temperature"])
+        self.io.DefineAttribute("Fides_Variable_Associations", ["points"])
 
     def set_initial_bc(self):
         if self.par_size > 1:
@@ -94,8 +108,17 @@ class Simulation:
                              dest=below, recvbuf=[self.v[-1,], self.xres + 2, MPI.DOUBLE], source=above)
 
     def MainLoop(self, frequency=100):
+      engine = self.io.Open("diffusion.bp", adios2.Mode.Write)
       while self.iteration < self.Max_iterations:
+        # writing the ADIOS data before the first simulation step enables us to
+        # verify the boundary conditions by writing the 0-th step
+        if self.iteration % frequency == 0:
+          engine.BeginStep()
+          engine.Put(self.T_id, self.v)
+          engine.Put(self.step_id, np.array([self.iteration], dtype=np.int32))
+          engine.EndStep()
         self.SimulateOneTimestep()
+      engine.Close()
 
 class ParallelSimulation(Simulation):
     def __init__(self, resolution, iterations):
@@ -116,8 +139,9 @@ class ParallelSimulation(Simulation):
 # Main program
 #
 def main():
-    sim = ParallelSimulation(resolution=64, iterations=500)
+    sim = ParallelSimulation(resolution=128, iterations=20000)
     sim.Initialize()
+    sim.Initialize_ADIOS()
     sim.MainLoop(frequency=50)
     sim.Finalize()
 

@@ -16,6 +16,7 @@ import numpy as np
 import matplotlib
 
 import matplotlib.pyplot as plt
+import adios2
 
 class Simulation:
     """
@@ -44,6 +45,18 @@ class Simulation:
         self.v = np.zeros(self.rmesh_dims)
         self.vnew = np.zeros([self.yres, self.xres])
         self.set_initial_bc()
+        
+    def Initialize_ADIOS(self):
+        self.adios = adios2.ADIOS(configFile="adios2.xml")
+        self.io    = self.adios.DeclareIO("writerIO")
+        self.T_id  = self.io.DefineVariable("temperature", self.v, [1, self.yres+2, self.xres+2],
+                                             [0,0,0], [1, self.yres+2, self.xres+2], adios2.ConstantDims)
+        self.io.DefineAttribute("Fides_Data_Model", "uniform")
+        self.io.DefineAttribute("Fides_Origin", np.array([0, 0., 0.]))
+        self.io.DefineAttribute("Fides_Spacing", np.array([self.dx, self.dx, self.dx]))
+        self.io.DefineAttribute("Fides_Dimension_Variable", "temperature")
+        self.io.DefineAttribute("Fides_Variable_List", ["temperature"])
+        self.io.DefineAttribute("Fides_Variable_Associations", ["points"])
 
     def set_initial_bc(self):
         """ initial values set to 0 except on bottom and top wall """
@@ -74,12 +87,18 @@ class Simulation:
         self.v[1:-1,1:-1] = self.vnew.copy()
 
     def MainLoop(self):
+      engine = self.io.Open("diffusion.bp", adios2.Mode.Write)
       while self.iteration < self.Max_iterations:
         self.SimulateOneTimestep()
+        engine.BeginStep()
+        engine.Put(self.T_id, self.v)
+        engine.EndStep()
+      engine.Close()
 
 def main():
     sim = Simulation(resolution=64, iterations=500)
     sim.Initialize()
+    sim.Initialize_ADIOS()
     sim.MainLoop()
     sim.Finalize()
 
