@@ -1,0 +1,16 @@
+<?xml version="1.0" ?>
+<!DOCTYPE Xdmf SYSTEM "Xdmf.dtd" []>
+<Xdmf xmlns:xi="http://www.w3.org/2003/XInclude" Version="2.2">
+  <Domain>
+    <Grid Name="Jacobi Mesh" GridType="Uniform">
+      <Topology TopologyType="3DCORECTMESH" Dimensions="1 34 34"/>
+      <Geometry GeometryType="ORIGIN_DXDYDZ">
+         <DataItem Name="Origin" NumberType="Float" Dimensions="3" Format="XML">0. 0. 0.</DataItem>
+         <DataItem Name="Spacing" NumberType="Float" Dimensions="3" Format="XML">1. 1. 1.</DataItem>
+      </Geometry>
+      <Attribute Name="temperature" Active="1" AttributeType="Scalar" Center="Node">
+          <DataItem Dimensions="1 34 34" NumberType="Float" Precision="8" Format="Binary">Jacobi.bin</DataItem>
+      </Attribute>
+    </Grid>
+  </Domain>
+</Xdmf>

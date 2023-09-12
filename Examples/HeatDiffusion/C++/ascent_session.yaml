@@ -1,0 +1,7 @@
+
+last_known_time: 3.1415
+cycle() % 100 == 0: 
+  100: 
+    value: 1
+    type: "bool"
+    time: 3.1415

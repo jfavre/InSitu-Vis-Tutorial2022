@@ -1,0 +1,1 @@
+/usr/bin/c++ -O3 -DNDEBUG CMakeFiles/pjacobi.dir/solvers.cxx.o CMakeFiles/pjacobi.dir/JacobiDriver.cxx.o -o bin/pjacobi  -Wl,-rpath,/local/apps/catalyst-v2.0.0-rc3-install/lib:/usr/lib/x86_64-linux-gnu/openmpi/lib -lm /local/apps/catalyst-v2.0.0-rc3-install/lib/libcatalyst.so.3 /usr/lib/x86_64-linux-gnu/openmpi/lib/libmpi_cxx.so /usr/lib/x86_64-linux-gnu/openmpi/lib/libmpi.so 

@@ -1,0 +1,12 @@
+export CATALYST_IMPLEMENTATION_PATHS=/local/apps/ParaView/dev/lib/catalyst
+export ADIOS2_PLUGIN_PATH=/local/apps/ADIOS2-v2.9.1-install/lib
+export CATALYST_IMPLEMENTATION_NAME=paraview
+export LD_LIBRARY_PATH=/local/apps/ospray-2.9.1.x86_64.linux/lib:$LD_LIBRARY_PATH
+
+inline mode:
+
+        self.io    = self.adios.DeclareIO("InTransit-vis")
+
+classic I/O to disk
+
+        self.io    = self.adios.DeclareIO("writerIO")
