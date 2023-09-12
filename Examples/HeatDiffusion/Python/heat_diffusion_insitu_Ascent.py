@@ -7,9 +7,9 @@
 # this serial version runs until completion and saves images of the scalar field
 # at regular intervals. It saves the final solution to a blueprint HDF5 file
 #
-# run: python3 jacobi_insitu_Ascent.py
+# run: python3 heat_diffusion_insitu_Ascent.py
 #
-# Tested with Python 3.10.6, Thu Feb 16 11:13:38 AM CET 2023
+# Tested with Python 3.10.12, Tue 12 Sep 16:06:03 CEST 2023
 #
 # module load daint-gpu Ascent matplotlib
 #
@@ -158,10 +158,10 @@ class Simulation_With_Ascent(Simulation):
         # make sure the mesh we created conforms to the blueprint
         verify_info = conduit.Node()
         if not conduit.blueprint.mesh.verify(self. mesh,verify_info):
-            print("Jacobi Mesh Verify failed!")
+            print("Heat diffusion mesh verify failed!")
           #print(verify_info.to_yaml())
         else:
-            print("Jacobi Mesh verify success!")
+            pass
 
         # print the mesh we created
         #print(self.mesh.to_yaml())
@@ -214,9 +214,9 @@ class Simulation_With_Ascent(Simulation):
                 self.a.execute(self.actions)
 
 def main():
-    sim = Simulation(resolution=64, iterations=500)
+    #sim = Simulation(resolution=64, iterations=500)
     # choices are meshtype="uniform", "rectilinear", "structured", "unstructured"
-    #sim = Simulation_With_Ascent(resolution=64, iterations=500, meshtype="uniform")
+    sim = Simulation_With_Ascent(resolution=64, iterations=500, meshtype="uniform")
     sim.initialize()
     sim.main_loop()
     sim.finalize()

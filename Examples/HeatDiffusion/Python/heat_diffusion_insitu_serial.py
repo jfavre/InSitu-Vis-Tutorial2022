@@ -6,9 +6,9 @@
 # First version runs until completion and makes a matplotlib figure of the
 # final scalar field
 #
-# run: python3 jacobi_insitu_serial.py
+# run: python3 heat_diffusion_insitu_serial.py
 #
-# Tested with Python 3.9.7, Wed Apr 27 12:02:12 PM CEST 2022
+# Tested with Python 3.10.12, Tue 12 Sep 15:57:58 CEST 2023
 ##############################################################################
 
 import sys, math

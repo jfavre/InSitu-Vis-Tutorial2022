@@ -7,9 +7,9 @@
 #
 # third version runs in parallel, splitting the domain in the vertical direction
 #
-# run: mpiexec -n 2 python3 jacobi_insitu_parallel.py
+# run: mpiexec -n 2 python3 heat_diffusion_insitu_parallel.py
 #
-# Tested with Python 3.9.7, Wed Apr 27 12:02:12 PM CEST 2022
+# Tested with Python 3.10.12, Tue 12 Sep 15:57:58 CEST 2023
 ##############################################################################
 import sys, math
 import numpy as np
