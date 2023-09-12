@@ -37,7 +37,7 @@ void MPI_Partition(int PartitioningDimension, simulation_data *sim);
 void AllocateGridMemory(simulation_data *sim);
 void FreeGridMemory(simulation_data *sim);
 void set_initial_bc(simulation_data *sim);
-double update_jacobi(simulation_data *sim);
+double update_temperature(simulation_data *sim);
 void simulate_one_timestep(simulation_data *sim);
 void CopyTempValues_2_OldValues(simulation_data *sim);
 void WriteFinalGrid(simulation_data *sim);

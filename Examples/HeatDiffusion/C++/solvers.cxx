@@ -204,7 +204,7 @@ void simulate_one_timestep(simulation_data *sim)
 {
   CopyTempValues_2_OldValues(sim);
 /* compute Temp solution according to the Jacobi scheme */
-  double del = update_jacobi(sim);
+  double del = update_temperature(sim);
   /* find global max error */
 
   MPI_Allreduce( &del, &sim->gdel, 1, MPI_DOUBLE, MPI_MAX, sim->topocomm );
@@ -213,7 +213,7 @@ void simulate_one_timestep(simulation_data *sim)
   sim->iter++;
 }
 
-double update_jacobi(simulation_data *sim)
+double update_temperature(simulation_data *sim)
 {
   double del = 0.0;
 
@@ -311,10 +311,10 @@ void MPIIOWriteData(const char *filename, simulation_data *sim)
 
 void WriteFinalGrid(simulation_data *sim)
 {
-  const char *fname = BASENAME"/Jacobi";
+  const char *fname = BASENAME"/Heat";
   if(sim->par_rank == 0){
   // first write a header file in BOV format, to enable reading by VisIt
-  FILE * fpbov = fopen(BASENAME"/Jacobi.bov", "w");
+  FILE * fpbov = fopen(BASENAME"/Heat.bov", "w");
   fprintf(fpbov,"TIME: %f\n", 0.0); // dummy value 0.0
   fprintf(fpbov,"DATA_FILE: %s.bin\n", fname);
   fprintf(fpbov,"DATA_SIZE: %d %d %d\n", sim->resolution+2, sim->resolution+2, 1); // size of grid in IJK
@@ -326,12 +326,12 @@ void WriteFinalGrid(simulation_data *sim)
   fclose(fpbov);
 
   // first write a header file in XDMF format, to enable reading by ParaView
-  FILE * fpxmf = fopen(BASENAME"/Jacobi.xmf", "w");
+  FILE * fpxmf = fopen(BASENAME"/Heat.xmf", "w");
   fprintf(fpxmf,"<?xml version=\"1.0\" ?>\n");
   fprintf(fpxmf,"<!DOCTYPE Xdmf SYSTEM \"Xdmf.dtd\" []>\n");
   fprintf(fpxmf,"<Xdmf xmlns:xi=\"http://www.w3.org/2003/XInclude\" Version=\"2.2\">\n");
   fprintf(fpxmf,"  <Domain>\n");
-  fprintf(fpxmf,"    <Grid Name=\"Jacobi Mesh\" GridType=\"Uniform\">\n");
+  fprintf(fpxmf,"    <Grid Name=\"Heat Mesh\" GridType=\"Uniform\">\n");
   fprintf(fpxmf,"      <Topology TopologyType=\"3DCORECTMESH\" Dimensions=\"1 %d %d\"/>\n", sim->resolution+2, sim->resolution+2);
 
   fprintf(fpxmf,"      <Geometry GeometryType=\"ORIGIN_DXDYDZ\">\n");
@@ -339,7 +339,7 @@ void WriteFinalGrid(simulation_data *sim)
   fprintf(fpxmf,"         <DataItem Name=\"Spacing\" NumberType=\"Float\" Dimensions=\"3\" Format=\"XML\">1. 1. 1.</DataItem>\n");
   fprintf(fpxmf,"      </Geometry>\n");
   fprintf(fpxmf,"      <Attribute Name=\"temperature\" Active=\"1\" AttributeType=\"Scalar\" Center=\"Node\">\n");
-  fprintf(fpxmf,"          <DataItem Dimensions=\"1 %d %d\" NumberType=\"Float\" Precision=\"8\" Format=\"Binary\">Jacobi.bin</DataItem>\n", sim->resolution+2, sim->resolution+2);
+  fprintf(fpxmf,"          <DataItem Dimensions=\"1 %d %d\" NumberType=\"Float\" Precision=\"8\" Format=\"Binary\">Heat.bin</DataItem>\n", sim->resolution+2, sim->resolution+2);
   fprintf(fpxmf,"      </Attribute>\n");
   fprintf(fpxmf,"    </Grid>\n");
   fprintf(fpxmf,"  </Domain>\n");

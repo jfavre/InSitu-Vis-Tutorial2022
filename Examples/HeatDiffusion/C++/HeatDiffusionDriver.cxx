@@ -1,5 +1,5 @@
 /*
- A parallel Jacobi solver for the Laplacian equation in 2D
+ A parallel heat diffusion solver for the Laplacian equation in 2D
  Written by Jean M. Favre, Swiss National Supercomputing Center
  Last tested Wed  3 May 12:20:11 CEST 2023
 */
