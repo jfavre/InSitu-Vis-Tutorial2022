@@ -5,42 +5,45 @@ module load Catalyst/2.0.0-CrayGNU-21.09-rc3
 
 Version 5.11: 
 
-ccmake -B buildCatalyst -S . \
-                 -DCMAKE_BUILD_TYPE=Release \
-                 -DINSITU=Catalyst \
-                 -Dcatalyst_DIR=${EBROOTCATALYST}/lib/cmake/catalyst-2.0
+cmake -B buildCatalyst -S . \
+       -DCMAKE_BUILD_TYPE=Release \
+       -DINSITU=Catalyst \
+       -Dcatalyst_DIR=${EBROOTCATALYST}/lib/cmake/catalyst-2.0
 
 cmake --build buildCatalyst
 
-env PARAVIEW_LOG_CATALYST_VERBOSITY=INFO  ./bin/pjacobi catalyst_state.py 
+env PARAVIEW_LOG_CATALYST_VERBOSITY=INFO  ./bin/heat_diffusion catalyst_state.py 
 
-rm /tmp/output-*png log; make && mpiexec -n 4 ./bin/pjacobi catalyst_state.py --output datasets/dataset-%04ts.vtpd  &> log; eog /tmp/output-*png
+rm /tmp/output-*png log; make && mpiexec -n 4 ./bin/heat_diffusion catalyst_state.py --output datasets/dataset-%04ts.vtpd  &> log; eog /tmp/output-*png
 
-./buildCatalyst/bin/pjacobi --res=32 --mesh=uniform      catalyst_state.py
-./buildCatalyst/bin/pjacobi --res=32 --mesh=rectilinear  catalyst_state.py
-./buildCatalyst/bin/pjacobi --res=32 --mesh=structured   catalyst_state.py
-./buildCatalyst/bin/pjacobi --res=32 --mesh=unstructured catalyst_state.py
+./buildCatalyst/bin/heat_diffusion --res=32 --mesh=uniform      catalyst_state.py
+./buildCatalyst/bin/heat_diffusion --res=32 --mesh=rectilinear  catalyst_state.py
+./buildCatalyst/bin/heat_diffusion --res=32 --mesh=structured   catalyst_state.py
+./buildCatalyst/bin/heat_diffusion --res=32 --mesh=unstructured catalyst_state.py
 
 #################################################
 
 # How to compile with the Ascent backend
 
 mkdir buildAscent
-cd buildAscent
-# on PIz Daint
+
+# on Piz Daint
 module load daint-gpu CMake cudatoolkit Ascent/0.9.1-CrayGNU-21.09
 
 # locally on my laptop, I use
 export LD_LIBRARY_PATH=/local/apps/Ascent/install/ascent-v0.9.1/lib:/local/apps/Ascent/install/vtk-m-v1.9.1/lib
 
-ccmake -S .. \
+ccmake -B buildAscent -S . \
   -DCMAKE_BUILD_TYPE=Release \
   -DINSITU=Ascent 
 
 # if compiled locally, add
-  -DAscent_DIR=/local/apps/Ascent/install/ascent-v0.9.1/lib/cmake/ascent
+  -DAscent_DIR=/local/apps/Ascent/install/ascent-develop/lib/cmake/ascent/
+  
+cmake --build buildAscent
 
 get the files {ascent_actions.yaml,plot_actions.yaml} in your runtime directory
+export LD_LIBRARY_PATH=/local/apps/Ascent/install/vtk-m-v2.0.0/lib
 
 #################################################
 Connect to Piz Daint:
