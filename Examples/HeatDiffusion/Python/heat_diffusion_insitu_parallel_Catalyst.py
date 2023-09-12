@@ -4,10 +4,9 @@
 #
 # Author: Jean M. Favre, Swiss National Supercomputing Center
 #
-# this serial version runs until completion and saves images of the scalar field
-# at regular intervals. It saves the final solution to a blueprint HDF5 file
+# this version runs in parallel, splitting the domain in the vertical direction
 #
-# run: python3 jacobi_insitu_Catalyst.py
+# Run: mpiexec -n 2 python3 heat_diffusion_insitu_parallel_Catalyst.py
 #
 # Tested with Python 3.10.12, Mon 11 Sep 13:42:19 CEST 2023
 #
@@ -21,6 +20,7 @@ import catalyst
 import catalyst_conduit as conduit
 import catalyst_conduit.blueprint
 
+from mpi4py import MPI
 
 class Simulation:
     """
@@ -34,10 +34,12 @@ class Simulation:
         the maximum number of iterations (default 100)
     """
     def __init__(self, resolution=64, iterations=100):
+        self.par_size = 1
+        self.par_rank = 0
         self.iteration = 0 # current iteration
         self.Max_iterations = iterations
         self.xres = resolution
-        self.yres = self.xres
+        self.yres = self.xres   # self.yres is redefined when splitting the parallel domain
         self.dx = 1.0 / (self.xres + 1)
 
     def initialize(self):
@@ -51,12 +53,20 @@ class Simulation:
         self.set_initial_bc()
 
     def set_initial_bc(self):
-        """ initial values set to 0 except on bottom and top wall """
-        #first (bottom) row
-        self.v[0,:] = [math.sin(math.pi * j * self.dx)
-                       for j in range(self.rmesh_dims[1])]
-        #last (top) row
-        self.v[-1,:] = self.v[0,:]* math.exp(-math.pi)
+        if self.par_size > 1:
+          if self.par_rank == 0:
+            self.v[0,:] = [math.sin(math.pi * j * self.dx)
+                           for j in range(self.rmesh_dims[1])]
+            #self.ghosts[-1,:] = 1
+          if self.par_rank == (self.par_size-1):
+            self.v[-1,:] = self.v[0,:] * math.exp(-math.pi)
+            #self.ghosts[0,:] = 1
+        else:
+          #first (bottom) row
+          self.v[0,:] = [math.sin(math.pi * j * self.dx)
+                         for j in range(self.rmesh_dims[1])]
+          #last (top) row
+          self.v[-1,:] = self.v[0,:] * math.exp(-math.pi)
 
     def finalize(self):
         """plot the scalar field iso-contour lines"""
@@ -84,8 +94,9 @@ class Simulation:
 
 # we now define a sub-class of Simulation to add a Catalyst in-situ coupling
 
-class Simulation_With_Catalyst(Simulation):
-    def __init__(self, resolution=64, iterations=100, meshtype="uniform", pv_script="pvDoubleGyre.py"):
+class ParallelSimulation_With_Catalyst(Simulation):
+    def __init__(self, resolution=64, iterations=100, meshtype="uniform", pv_script="catalyst_state.py"):
+        self.comm = MPI.COMM_WORLD
         Simulation.__init__(self, resolution, iterations)
         self.MeshType = meshtype
         if meshtype == "rectilinear":
@@ -111,12 +122,29 @@ class Simulation_With_Catalyst(Simulation):
         
     # Add Catalyst mesh definition
     def initialize(self):
+        self.par_size = self.comm.Get_size()
+        self.par_rank = self.comm.Get_rank()
+        # split the parallel domain along the Y axis. No error check!
+        self.yres = self.xres // self.par_size
         Simulation.initialize(self)
         self.initialize_catalyst()
 
     def main_loop(self, frequency=100):
       while self.iteration < self.Max_iterations:
         self.simulate_one_timestep()
+        if self.par_size > 1:
+          # if in parallel, exchange ghost cells now
+          # define who is my neighbor above and below
+          below = self.par_rank - 1
+          above = self.par_rank + 1
+          if self.par_rank == 0:
+            below = MPI.PROC_NULL   # tells MPI not to perform send/recv
+          if self.par_rank == (self.par_size-1):
+            above = MPI.PROC_NULL   # should only receive/send from/to below
+          self.comm.Sendrecv([self.v[-2,], self.xres + 2, MPI.DOUBLE],
+                             dest=above, recvbuf=[self.v[-0,], self.xres + 2, MPI.DOUBLE], source=below)
+          self.comm.Sendrecv([self.v[1,], self.xres + 2, MPI.DOUBLE],
+                             dest=below, recvbuf=[self.v[-1,], self.xres + 2, MPI.DOUBLE], source=above)
 
         exec_params = conduit.Node()
         channel = exec_params["catalyst/channels/grid"]
@@ -137,7 +165,7 @@ class Simulation_With_Catalyst(Simulation):
         if self.MeshType == "uniform":
           # add origin and spacing to the coordset (optional)
             mesh["coordsets/coords/origin/x"] = 0.0
-            mesh["coordsets/coords/origin/y"] = 0.0
+            mesh["coordsets/coords/origin/y"] = self.par_rank * self.yres * self.dx
             mesh["coordsets/coords/spacing/dx"] = self.dx
             mesh["coordsets/coords/spacing/dy"] = self.dx
         else:
@@ -162,7 +190,7 @@ class Simulation_With_Catalyst(Simulation):
         # make sure the mesh we created conforms to the blueprint
         verify_info = conduit.Node()
         if not conduit.blueprint.mesh.verify(mesh, verify_info):
-            print("Jacobi Mesh Verify failed!")
+            print("Heat mesh verify failed!")
           #print(verify_info.to_yaml())
         else:
             pass
@@ -187,7 +215,7 @@ class Simulation_With_Catalyst(Simulation):
 def main():
     #sim = Simulation(resolution=64, iterations=500)
     # choices are meshtype="uniform", "rectilinear", "structured", "unstructured"
-    sim = Simulation_With_Catalyst(meshtype="uniform", iterations=5000, pv_script="../JacobiC++/catalyst_state.py")
+    sim = ParallelSimulation_With_Catalyst(meshtype="uniform", iterations=5000, pv_script="../C++/catalyst_state.py")
     sim.initialize()
     sim.main_loop()
     sim.finalize_catalyst()
