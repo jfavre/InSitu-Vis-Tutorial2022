@@ -29,7 +29,7 @@ if(INSITU STREQUAL "None")
   add_executable(double_gyre ${_SRCS})
 
 elseif(INSITU STREQUAL "Catalyst")
-  add_executable(double_gyre_catalyst ${_SRCS})
+  add_executable(double_gyre_catalyst ${_SRCS} double_gyre_catalyst.cxx)
   find_package(catalyst REQUIRED PATHS "${EBROOTCATALYST}/lib/cmake/catalyst-2.0")
   target_compile_definitions(double_gyre_catalyst PUBLIC USE_CATALYST=1)
   target_link_libraries(double_gyre_catalyst PRIVATE catalyst::catalyst)
