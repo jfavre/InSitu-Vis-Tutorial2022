@@ -20,3 +20,5 @@ export CATALYST_IMPLEMENTATION_PATHS=/local/apps/ParaView/dev/lib/catalyst
 export VTK_SILENCE_GET_VOID_POINTER_WARNINGS=1
 
 ./buildCatalyst/bin/double_gyre_catalyst 128 64 10 ../Python/pvDoubleGyre.py
+
+ll datasets
