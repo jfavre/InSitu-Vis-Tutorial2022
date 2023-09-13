@@ -81,7 +81,7 @@ void AllocateGridMemory(simulation_data *sim)
   int i;
   sim->oldTemp = (double *)calloc(       (sim->bx + 2) * (sim->by + 2), sizeof(double));
   sim->Temp    = (double *)calloc(       (sim->bx + 2) * (sim->by + 2), sizeof(double));
-  sim->Ghost   = (unsigned char *)calloc((sim->bx + 1) * (sim->by + 1), sizeof(unsigned char));
+  sim->Ghost   = (unsigned char *)calloc((sim->bx + 2) * (sim->by + 2), sizeof(unsigned char));
   sim->cx      = (double *)malloc(sizeof(double) * (sim->bx + 2));
   sim->cy      = (double *)malloc(sizeof(double) * (sim->by + 2));
 
@@ -164,15 +164,15 @@ void set_initial_bc(simulation_data *sim)
   int i;
   double x;
   // set to 0 everywhere
-  memset(sim->Ghost, 0, sizeof(unsigned char)*(sim->bx+1)*(sim->by+1));
+  memset(sim->Ghost, 0, sizeof(unsigned char)*(sim->bx+2)*(sim->by+2));
   // set to "1" on bottom line
-  memset(sim->Ghost, DUPLICATECELL, sizeof(unsigned char)*(sim->bx+1));
+  memset(sim->Ghost, DUPLICATECELL, sizeof(unsigned char)*(sim->bx+2));
   // set to "1" on top line
-  memset(&sim->Ghost[(sim->by+0)*(sim->bx+1)], DUPLICATECELL, sizeof(unsigned char)*(sim->bx+1));
+  memset(&sim->Ghost[(sim->by+1)*(sim->bx+2)], DUPLICATECELL, sizeof(unsigned char)*(sim->bx+2));
   
-  for (i = 1; i < sim->by+0; i++)
+  for (i = 1; i < sim->by+1; i++)
     {
-    sim->Ghost[i*(sim->bx+1)] = sim->Ghost[i*(sim->bx+1)+sim->by+0] = DUPLICATECELL;
+    sim->Ghost[i*(sim->bx+1)] = sim->Ghost[i*(sim->bx+2)+sim->by+1] = DUPLICATEPOINT;
     }
     
   //memset(sim->Temp, 0, sizeof(double)*(sim->bx+2)*(sim->by+2));
