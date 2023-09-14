@@ -35,18 +35,16 @@ void Initialize(int argc, char* argv[], const simulation_data *sim)
     //std::cout << "Uniform Grid dimensions =[" << (sim.local_extents[1] - sim.local_extents[0] + 1) << ", " << (sim.local_extents[3] - sim.local_extents[2] + 1) << ", 1]"<< std::endl;
     mesh["coordsets/coords/dims/i"].set(sim->local_extents[1] - sim->local_extents[0] + 1);
     mesh["coordsets/coords/dims/j"].set(sim->local_extents[3] - sim->local_extents[2] + 1);
-    mesh["coordsets/coords/dims/k"].set(1);
+    //mesh["coordsets/coords/dims/k"].set(1);  //defining it as a 3D grid creates problem
 
     //std::cout << "Uniform Grid Origin =[" << sim.cx[0] << ", " << sim.cy[0] << ", 0.]"<< std::endl;
     mesh["coordsets/coords/origin/x"].set(sim->cx[0]);
     mesh["coordsets/coords/origin/y"].set(sim->cy[0]);
-    mesh["coordsets/coords/origin/z"].set(0.0);
     mesh["coordsets/coords/type"].set(sim->mesh);
 
     float spacing = 1.0/(sim->resolution+1.0);
     mesh["coordsets/coords/spacing/dx"].set(spacing);
     mesh["coordsets/coords/spacing/dy"].set(spacing);
-    mesh["coordsets/coords/spacing/dz"].set(1);
     }
 
   else if((sim->mesh == "structured") || (sim->mesh == "unstructured"))
@@ -78,13 +76,13 @@ void Initialize(int argc, char* argv[], const simulation_data *sim)
   mesh["fields/temperature/topology"].set("mesh");
   mesh["fields/temperature/volume_dependent"].set("false");
   mesh["fields/temperature/values"].set_external(sim->Temp, (sim->bx + 2) * (sim->by + 2));
-  
+ /*
   mesh["fields/ascent_ghosts/association"].set("vertex");
   mesh["fields/ascent_ghosts/type"].set("scalar");
   mesh["fields/ascent_ghosts/topology"].set("mesh");
   mesh["fields/ascent_ghosts/volume_dependent"].set("false");
   mesh["fields/ascent_ghosts/values"].set_external(sim->Ghost, (sim->bx + 2) * (sim->by + 2));
-  
+  */
   conduit::Node verify_info;
   if (!conduit::blueprint::mesh::verify(mesh, verify_info))
     {
