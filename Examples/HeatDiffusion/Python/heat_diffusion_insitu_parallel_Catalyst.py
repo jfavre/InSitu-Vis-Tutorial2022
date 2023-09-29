@@ -1,15 +1,14 @@
 ##############################################################################
 # A simple simulator for the heat equation in 2D, with an in-situ coupling
-# with the Catalyst library https://catalyst-in-situ.readthedocs.io/en/latest/index.html
+# using Catalyst https://catalyst-in-situ.readthedocs.io/en/latest/index.html
 #
 # Author: Jean M. Favre, Swiss National Supercomputing Center
 #
-# this version runs in parallel, splitting the domain in the vertical direction
+# Can run in parallel, splitting the domain in the vertical direction
 #
 # Run: mpiexec -n 2 python3 heat_diffusion_insitu_parallel_Catalyst.py
 #
 # Tested with Python 3.10.12, Mon 11 Sep 13:42:19 CEST 2023
-#
 #
 ##############################################################################
 import math
@@ -47,7 +46,6 @@ class Simulation:
         the internal grid points.
         """
         self.rmesh_dims = [self.yres + 2, self.xres + 2]
-        #print("grid dimensions = ", self.rmesh_dims)
         self.v = np.zeros(self.rmesh_dims)
         self.vnew = np.zeros([self.yres, self.xres])
         self.set_initial_bc()
@@ -99,24 +97,7 @@ class ParallelSimulation_With_Catalyst(Simulation):
         self.comm = MPI.COMM_WORLD
         Simulation.__init__(self, resolution, iterations)
         self.MeshType = meshtype
-        if meshtype == "rectilinear":
-            self.xc = np.linspace(0, 1, self.xres + 2)
-            self.yc = np.linspace(0, 1, self.yres + 2)
-        else:
-            if meshtype in ('structured', 'unstructured'):
-                self.xc, self.yc = np.meshgrid(np.linspace(0, 1, self.xres + 2),
-                                           np.linspace(0, 1, self.yres + 2),
-                                           indexing='xy')
-        if meshtype == "unstructured":
-            self.conn = np.zeros(((self.xres + 1) * (self.yres + 1) * 4), dtype=np.int32)
-            i=0
-            for iy in range(self.yres+1):
-                for ix in range(self.xres+1):
-                    self.conn[4*i+0] = ix + iy*(self.xres + 2)
-                    self.conn[4*i+1] = ix + (iy+1)*(self.xres + 2)
-                    self.conn[4*i+2] = ix + (iy+1)*(self.xres + 2)+ 1
-                    self.conn[4*i+3] = ix + iy*(self.xres + 2) + 1
-                    i += 1
+
         self.insitu = conduit.Node()
         self.pv_script = pv_script
         
@@ -126,10 +107,33 @@ class ParallelSimulation_With_Catalyst(Simulation):
         self.par_rank = self.comm.Get_rank()
         # split the parallel domain along the Y axis. No error check!
         self.yres = self.xres // self.par_size
+        if self.MeshType == "rectilinear":
+          self.xc = np.linspace(0, 1, self.xres + 2)
+          self.yc = np.linspace((self.par_rank * self.yres) * self.dx,
+                                (((self.par_rank + 1) * self.yres) + 1)* self.dx,
+                                self.yres + 2)
+        if self.MeshType in ('structured', 'unstructured'):
+          self.xc, self.yc = np.meshgrid(np.linspace(0, 1, self.xres + 2),
+                                         np.linspace((self.par_rank * self.yres) * self.dx,
+                                                     (((self.par_rank + 1) * self.yres) + 1)* self.dx,
+                                                     self.yres + 2),
+                                         indexing='xy')
+                                         
+        if self.MeshType == "unstructured":
+            self.conn = np.zeros(((self.xres + 1) * (self.yres + 1) * 4), dtype=np.int32)
+            i=0
+            for iy in range(self.yres+1):
+                for ix in range(self.xres+1):
+                    self.conn[4*i+0] = ix + iy*(self.xres + 2)
+                    self.conn[4*i+1] = ix + (iy+1)*(self.xres + 2)
+                    self.conn[4*i+2] = ix + (iy+1)*(self.xres + 2)+ 1
+                    self.conn[4*i+3] = ix + iy*(self.xres + 2) + 1
+                    i += 1
+                    
         Simulation.initialize(self)
         self.initialize_catalyst()
 
-    def main_loop(self, frequency=100):
+    def main_loop(self):
       while self.iteration < self.Max_iterations:
         self.simulate_one_timestep()
         if self.par_size > 1:
@@ -152,25 +156,26 @@ class ParallelSimulation_With_Catalyst(Simulation):
         mesh = channel["data"]
 
         # create the coordinate set
-        if self.MeshType in ('structured', 'unstructured'):
-            mesh["coordsets/coords/type"] = "explicit"
-        else:
+        if self.MeshType == "rectilinear":
+            mesh["coordsets/coords/type"] = self.MeshType
+            mesh["coordsets/coords/values/x"].set_external(self.xc)
+            mesh["coordsets/coords/values/y"].set_external(self.yc)
+            #print("subset start at ", self.par_rank * self.yres, ", L = ", self.yres + 2)
+            mesh["coordsets/coords/values/z"].set(0.0)
+        elif self.MeshType == "uniform":
             mesh["coordsets/coords/type"] = self.MeshType
             mesh["coordsets/coords/dims/i"] = self.xres + 2
             mesh["coordsets/coords/dims/j"] = self.yres + 2
-
-        mesh["topologies/mesh/type"] = self.MeshType
-        mesh["topologies/mesh/coordset"] = "coords"
-
-        if self.MeshType == "uniform":
-          # add origin and spacing to the coordset (optional)
             mesh["coordsets/coords/origin/x"] = 0.0
             mesh["coordsets/coords/origin/y"] = self.par_rank * self.yres * self.dx
             mesh["coordsets/coords/spacing/dx"] = self.dx
             mesh["coordsets/coords/spacing/dy"] = self.dx
-        else:
+        else: # self.MeshType in ('structured', 'unstructured'):
+            mesh["coordsets/coords/type"] = "explicit"
             mesh["coordsets/coords/values/x"].set_external(self.xc.ravel())
             mesh["coordsets/coords/values/y"].set_external(self.yc.ravel())
+        mesh["topologies/mesh/type"] = self.MeshType
+        mesh["topologies/mesh/coordset"] = "coords"
 
         if self.MeshType == "structured":
             mesh["topologies/mesh/elements/dims/i"] = np.int32(self.xres + 1)
@@ -179,6 +184,7 @@ class ParallelSimulation_With_Catalyst(Simulation):
         if self.MeshType == "unstructured":
             mesh["topologies/mesh/elements/shape"] = "quad"
             mesh["topologies/mesh/elements/connectivity"].set_external(self.conn)
+
         # create a vertex associated field called "temperature"
         mesh["fields/temperature/association"] = "vertex"
         mesh["fields/temperature/topology"] = "mesh"
@@ -191,13 +197,14 @@ class ParallelSimulation_With_Catalyst(Simulation):
         verify_info = conduit.Node()
         if not conduit.blueprint.mesh.verify(mesh, verify_info):
             print("Heat mesh verify failed!")
-          #print(verify_info.to_yaml())
         else:
-            pass
+            if self.iteration == 1:
+              print(mesh.to_yaml())
+            #pass
 
         state = exec_params["catalyst/state"]
         state["timestep"] = self.iteration
-        state["time"] = self.iteration *0.1
+        state["time"] = self.iteration * 0.1
         catalyst.execute(exec_params)
 
     def initialize_catalyst(self):
@@ -215,16 +222,13 @@ class ParallelSimulation_With_Catalyst(Simulation):
 def main():
     #sim = Simulation(resolution=64, iterations=500)
     # choices are meshtype="uniform", "rectilinear", "structured", "unstructured"
-    sim = ParallelSimulation_With_Catalyst(meshtype="uniform", iterations=5000, pv_script="../C++/catalyst_state.py")
+    sim = ParallelSimulation_With_Catalyst(meshtype="unstructured",
+                                           iterations=3000,
+                                           pv_script="../C++/catalyst_state.py")
     sim.initialize()
     sim.main_loop()
     sim.finalize_catalyst()
  
 main()
-
-# list all images which have been rendered to disk
-image_files = glob.glob("datasets/*png")
-image_files.sort()
-print(image_files)
 
 
