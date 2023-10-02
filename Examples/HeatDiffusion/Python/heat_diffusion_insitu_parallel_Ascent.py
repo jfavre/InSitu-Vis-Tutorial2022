@@ -6,11 +6,12 @@
 #
 # this version runs in parallel, splitting the domain in the vertical direction
 #
-# Run: mpiexec -n 2 python3 heat_diffusion_insitu_parallel_Ascent.py
+# Run: mpiexec -n 2 python3 heat_diffusion_insitu_parallel_Ascent.py \
+#                           --res=64 -t 1000  --mesh=uniform
 #
 # Tested with Python 3.10.12, Tue 12 Sep 16:28:23 CEST 2023
 ##############################################################################
-import sys, math
+import sys, math, argparse
 import numpy as np
 import conduit
 import conduit.blueprint
@@ -60,9 +61,12 @@ class Simulation:
             self.v[0,:] = [math.sin(math.pi * j * self.dx)
                            for j in range(self.rmesh_dims[1])]
             self.ghosts[-1,:] = 1
-          if self.par_rank == (self.par_size-1):
+          elif self.par_rank == (self.par_size-1):
             self.v[-1,:] = self.v[0,:] * math.exp(-math.pi)
             self.ghosts[0,:] = 1
+          else:
+            self.ghosts[0,:] = 1
+            self.ghosts[-1,:] = 1
         else:
           #first (bottom) row
           self.v[0,:] = [math.sin(math.pi * j * self.dx)
@@ -88,9 +92,25 @@ class Simulation:
         self.SimulateOneTimestep()
 
 class ParallelSimulation_With_Ascent(Simulation):
-    def __init__(self, resolution, iterations):
+    """
+    Attributes
+    ----------
+    resolution : int
+        the number of grid points on the I and J axis (default 64)
+    iterations : int
+        the maximum number of iterations (default 100)
+    meshtype : string
+        can be one of "uniform", "rectilinear", "structured", "unstructured"
+        this is for demonstration purposes only. The computation itself is
+        independent of the underlying grid since it uses a simple 4-point stencil.
+        Our aim is to demonstrate the use of Conduit and verify that Ascent can process
+        each MPI partition correcly with all 4 grid types.
+    """
+
+    def __init__(self, resolution=64, iterations=100, meshtype="uniform"):
         self.comm = MPI.COMM_WORLD
         Simulation.__init__(self, resolution, iterations)
+        self.MeshType = meshtype
 
     # Override Initialize for parallel
     def Initialize(self):
@@ -105,29 +125,62 @@ class ParallelSimulation_With_Ascent(Simulation):
         ascent_opts = conduit.Node()
         ascent_opts["mpi_comm"] = MPI.COMM_WORLD.py2f()
         ascent_opts["exceptions"] = "forward"
-        #ascent_opts["ghost_field_name"] = "cell_ghosts";
         ascent_opts["ghost_field_name"] = "point_ghosts";
         # open Ascent
         self.a = ascent.mpi.Ascent()
         self.a.open(ascent_opts)
 
-        # setup a uniform mesh
+        # setup a mesh
         self.mesh = conduit.Node()
-
-        # create the coordinate set
-        self.mesh["coordsets/coords/type"] = "uniform";
-        self.mesh["coordsets/coords/dims/i"] = self.xres + 2
-        self.mesh["coordsets/coords/dims/j"] = self.yres + 2
         
-        # add origin and spacing to the coordset (optional)
-        self.mesh["coordsets/coords/origin/x"] = 0.0
-        self.mesh["coordsets/coords/origin/y"] = self.par_rank * self.yres * self.dx
+        if self.MeshType == "uniform":
+          # create the coordinate set
+          self.mesh["coordsets/coords/type"] = self.MeshType;
+          self.mesh["coordsets/coords/dims/i"] = self.xres + 2
+          self.mesh["coordsets/coords/dims/j"] = self.yres + 2
+          self.mesh["coordsets/coords/origin/x"] = 0.0
+          self.mesh["coordsets/coords/origin/y"] = self.par_rank * self.yres * self.dx
+          self.mesh["coordsets/coords/spacing/dx"] = self.dx
+          self.mesh["coordsets/coords/spacing/dy"] = self.dx
+        if self.MeshType == "rectilinear":
+          xc = np.linspace(0, 1, self.xres + 2)
+          yc = np.linspace((self.par_rank * self.yres) * self.dx,
+                                (((self.par_rank + 1) * self.yres) + 1)* self.dx,
+                                self.yres + 2)
+          self.mesh["coordsets/coords/type"] = self.MeshType
+          self.mesh["coordsets/coords/values/x"].set_external(xc)
+          self.mesh["coordsets/coords/values/y"].set_external(yc)
+          
+        if self.MeshType in ('structured', 'unstructured'):
+          self.xc, self.yc = np.meshgrid(np.linspace(0, 1, self.xres + 2),
+                               np.linspace((self.par_rank * self.yres) * self.dx,
+                                           (((self.par_rank + 1) * self.yres) + 1)* self.dx,
+                                           self.yres + 2),
+                               indexing='xy')
+          self.mesh["coordsets/coords/type"] = "explicit"
+          self.mesh["coordsets/coords/values/x"].set_external(self.xc.ravel())
+          self.mesh["coordsets/coords/values/y"].set_external(self.yc.ravel())
+          
+        if self.MeshType == "structured":
+          self.mesh["topologies/mesh/elements/dims/i"] = np.int32(self.xres + 1)
+          self.mesh["topologies/mesh/elements/dims/j"] = np.int32(self.yres + 1)
+          
+        if self.MeshType == "unstructured":
+          # we describe the grid as a list of VTK 2D Quadrilaterals
+          self.connectivity = np.zeros(((self.xres + 1) * (self.yres + 1) * 4), dtype=np.int32)
+          i=0
+          for iy in range(self.yres+1):
+            for ix in range(self.xres+1):
+              self.connectivity[4*i+0] = ix + iy*(self.xres + 2)
+              self.connectivity[4*i+1] = ix + (iy+1)*(self.xres + 2)
+              self.connectivity[4*i+2] = ix + (iy+1)*(self.xres + 2)+ 1
+              self.connectivity[4*i+3] = ix + iy*(self.xres + 2) + 1
+              i += 1
+          self.mesh["topologies/mesh/elements/shape"] = "quad"
+          self.mesh["topologies/mesh/elements/connectivity"].set_external(self.connectivity)
 
-        self.mesh["coordsets/coords/spacing/dx"] = self.dx
-        self.mesh["coordsets/coords/spacing/dy"] = self.dx
-        
         # add the topology, implicitly derived from the coordinate set
-        self.mesh["topologies/mesh/type"] = "uniform";
+        self.mesh["topologies/mesh/type"] = self.MeshType;
         self.mesh["topologies/mesh/coordset"] = "coords";
         
         # create a vertex associated field called "temperature"
@@ -145,11 +198,12 @@ class ParallelSimulation_With_Ascent(Simulation):
         
         # make sure the mesh we created conforms to the blueprint
         verify_info = conduit.Node()
-        if not conduit.blueprint.mesh.verify(self. mesh,verify_info):
+        if not conduit.blueprint.mesh.verify(self.mesh,verify_info):
           print("Mesh Verify failed!")
           print(verify_info.to_yaml())
         else:
-          print("Mesh verify success!")
+          pass
+          #print(self.mesh.to_yaml())
     
         # print the mesh we created
         # print(self.mesh.to_yaml())
@@ -208,12 +262,42 @@ class ParallelSimulation_With_Ascent(Simulation):
         self.a.execute(action)
         self.a.close()
 
-# Main program
-#
-def main():
-    sim = ParallelSimulation_With_Ascent(resolution=64, iterations=500)
-    sim.Initialize()
-    sim.MainLoop(frequency=50)
-    sim.Finalize(savedir="/dev/shm/")
+def main(args):
+    # run without in-situ Catalyst coupling and without MPI
+    if not args.insitu:
+      sim0 = Simulation(resolution=args.res, iterations=args.timesteps)
+      sim0.initialize()
+      sim0.main_loop()
+      sim0.finalize()
+    else:
+    # run with in-situ Ascent coupling and with MPI
+    # meshtype can be one of "uniform", "rectilinear", "structured", "unstructured"
+      sim = ParallelSimulation_With_Ascent(resolution = args.res,
+                                           meshtype = args.mesh,
+                                           iterations = args.timesteps)
+      sim.Initialize()
+      sim.MainLoop(frequency = args.frequency)
+      sim.Finalize(savedir = args.dir)
 
-main()
+parser = argparse.ArgumentParser(\
+    description="heat diffusion miniapp for ParaView Catalyst (v2) testing")
+parser.add_argument("-t", "--timesteps", type=int,
+    help="number of timesteps to run the miniapp (default: 1000)", default=1000)
+parser.add_argument("--res",  type=int,
+    help="resolution in each coordinate direction (default: 64)", default=64)
+parser.add_argument("-m", "--mesh", type=str, default="uniform",
+    help="mesh type (default: uniform)")
+parser.add_argument("-f", "--frequency", type=int, default=50,
+    help="How often should the Ascent script be executed in situ processing.")
+parser.add_argument("-d", "--dir", type=str,
+    help="path to a directory where to dump the Blueprint output",
+    default="/dev/shm/")
+parser.add_argument("--insitu",
+    help="toggle the use of the in-situ vis coupling with Catalyst",
+    type=eval, 
+    choices=[True, False], 
+    default='True')
+
+if __name__ == "__main__":
+    args = parser.parse_args()
+    main(args)

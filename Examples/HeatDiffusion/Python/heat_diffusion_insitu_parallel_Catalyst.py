@@ -4,15 +4,20 @@
 #
 # Author: Jean M. Favre, Swiss National Supercomputing Center
 #
-# Can run in parallel, splitting the domain in the vertical direction
+# Can run in parallel (if in-situ is turned on), splitting the domain in
+# the vertical direction.
+# There is no error checking on grid resolution and MPI doman splitting.
+# it is strongly advised to use grid resolutions like 2^N and
+# an even number of MPI partitions, e.g.
 #
-# Run: mpiexec -n 2 python3 heat_diffusion_insitu_parallel_Catalyst.py
+# Run: mpiexec -n 4 python3 heat_diffusion_insitu_parallel_Catalyst.py \
+#                           --res=64 -t 1000 --script ../C++/catalyst_state.py
 #
-# Tested with Python 3.10.12, Mon 11 Sep 13:42:19 CEST 2023
+# Tested with Python 3.10.12, Mon  2 Oct 08:16:07 CEST 2023
 #
 ##############################################################################
 import math
-import glob
+import argparse
 import numpy as np
 import matplotlib.pyplot as plt
 import catalyst
@@ -23,7 +28,8 @@ from mpi4py import MPI
 
 class Simulation:
     """
-    A simple 4-point stencil simulation for the heat equation
+    A simple 4-point stencil simulation for the heat equation.
+    The domain (x, Y) is [0.0, 1.0] x [0.0, 1.0]
 
     Attributes
     ----------
@@ -47,6 +53,7 @@ class Simulation:
         """
         self.rmesh_dims = [self.yres + 2, self.xres + 2]
         self.v = np.zeros(self.rmesh_dims)
+        self.ghosts = np.zeros(self.rmesh_dims, dtype=np.ubyte)
         self.vnew = np.zeros([self.yres, self.xres])
         self.set_initial_bc()
 
@@ -55,10 +62,13 @@ class Simulation:
           if self.par_rank == 0:
             self.v[0,:] = [math.sin(math.pi * j * self.dx)
                            for j in range(self.rmesh_dims[1])]
-            #self.ghosts[-1,:] = 1
-          if self.par_rank == (self.par_size-1):
+            self.ghosts[-1,:] = 1
+          elif self.par_rank == (self.par_size-1):
             self.v[-1,:] = self.v[0,:] * math.exp(-math.pi)
-            #self.ghosts[0,:] = 1
+            self.ghosts[0,:] = 1
+          else:
+            self.ghosts[0,:] = 1
+            self.ghosts[-1,:] = 1
         else:
           #first (bottom) row
           self.v[0,:] = [math.sin(math.pi * j * self.dx)
@@ -90,9 +100,26 @@ class Simulation:
         while self.iteration < self.Max_iterations:
             self.simulate_one_timestep()
 
-# we now define a sub-class of Simulation to add a Catalyst in-situ coupling
+# define a sub-class of Simulation to add a Catalyst in-situ coupling
 
 class ParallelSimulation_With_Catalyst(Simulation):
+    """
+    Attributes
+    ----------
+    resolution : int
+        the number of grid points on the I and J axis (default 64)
+    iterations : int
+        the maximum number of iterations (default 100)
+    meshtype : string
+        can be one of "uniform", "rectilinear", "structured", "unstructured"
+        this is for demonstration purposes only. The computation itself is
+        independent of the underlying grid since it uses a simple 4-point stencil.
+        Our aim is to demonstrate the use of Conduit and verify that Catalyst can process
+        each MPI partition correcly with all 4 grid types.
+    pv_script : string
+        a ParaView Catalyst script file to generate images and other visualization outputs
+    """
+
     def __init__(self, resolution=64, iterations=100, meshtype="uniform", pv_script="catalyst_state.py"):
         self.comm = MPI.COMM_WORLD
         Simulation.__init__(self, resolution, iterations)
@@ -120,14 +147,15 @@ class ParallelSimulation_With_Catalyst(Simulation):
                                          indexing='xy')
                                          
         if self.MeshType == "unstructured":
-            self.conn = np.zeros(((self.xres + 1) * (self.yres + 1) * 4), dtype=np.int32)
+            # we describe the grid as a list of VTK 2D Quadrilaterals
+            self.connectivity = np.zeros(((self.xres + 1) * (self.yres + 1) * 4), dtype=np.int32)
             i=0
             for iy in range(self.yres+1):
                 for ix in range(self.xres+1):
-                    self.conn[4*i+0] = ix + iy*(self.xres + 2)
-                    self.conn[4*i+1] = ix + (iy+1)*(self.xres + 2)
-                    self.conn[4*i+2] = ix + (iy+1)*(self.xres + 2)+ 1
-                    self.conn[4*i+3] = ix + iy*(self.xres + 2) + 1
+                    self.connectivity[4*i+0] = ix + iy*(self.xres + 2)
+                    self.connectivity[4*i+1] = ix + (iy+1)*(self.xres + 2)
+                    self.connectivity[4*i+2] = ix + (iy+1)*(self.xres + 2)+ 1
+                    self.connectivity[4*i+3] = ix + iy*(self.xres + 2) + 1
                     i += 1
                     
         Simulation.initialize(self)
@@ -160,7 +188,6 @@ class ParallelSimulation_With_Catalyst(Simulation):
             mesh["coordsets/coords/type"] = self.MeshType
             mesh["coordsets/coords/values/x"].set_external(self.xc)
             mesh["coordsets/coords/values/y"].set_external(self.yc)
-            #print("subset start at ", self.par_rank * self.yres, ", L = ", self.yres + 2)
             mesh["coordsets/coords/values/z"].set(0.0)
         elif self.MeshType == "uniform":
             mesh["coordsets/coords/type"] = self.MeshType
@@ -183,7 +210,7 @@ class ParallelSimulation_With_Catalyst(Simulation):
 
         if self.MeshType == "unstructured":
             mesh["topologies/mesh/elements/shape"] = "quad"
-            mesh["topologies/mesh/elements/connectivity"].set_external(self.conn)
+            mesh["topologies/mesh/elements/connectivity"].set_external(self.connectivity)
 
         # create a vertex associated field called "temperature"
         mesh["fields/temperature/association"] = "vertex"
@@ -193,14 +220,18 @@ class ParallelSimulation_With_Catalyst(Simulation):
         # Views that are effectively 1D-strided are supported.
         mesh["fields/temperature/values"].set_external(self.v.ravel())
 
+        # create a vertex associated field called "point_ghosts"
+        mesh["fields/vtkGhostType/association"] = "vertex";
+        mesh["fields/vtkGhostType/topology"] = "mesh";
+        mesh["fields/vtkGhostType/values"].set_external(self.ghosts.ravel())
+        
         # make sure the mesh we created conforms to the blueprint
         verify_info = conduit.Node()
         if not conduit.blueprint.mesh.verify(mesh, verify_info):
             print("Heat mesh verify failed!")
         else:
             if self.iteration == 1:
-              print(mesh.to_yaml())
-            #pass
+              print(mesh)
 
         state = exec_params["catalyst/state"]
         state["timestep"] = self.iteration
@@ -219,16 +250,41 @@ class ParallelSimulation_With_Catalyst(Simulation):
         """close"""
         catalyst.finalize(self.insitu)
         
-def main():
-    #sim = Simulation(resolution=64, iterations=500)
-    # choices are meshtype="uniform", "rectilinear", "structured", "unstructured"
-    sim = ParallelSimulation_With_Catalyst(meshtype="unstructured",
-                                           iterations=3000,
-                                           pv_script="../C++/catalyst_state.py")
-    sim.initialize()
-    sim.main_loop()
-    sim.finalize_catalyst()
- 
-main()
+def main(args):
+    # run without in-situ Catalyst coupling and without MPI
+    if not args.insitu:
+      sim0 = Simulation(resolution=args.res, iterations=args.timesteps)
+      sim0.initialize()
+      sim0.main_loop()
+      sim0.finalize()
+    else:
+    # run with in-situ Catalyst coupling and with MPI
+    # meshtype can be one of "uniform", "rectilinear", "structured", "unstructured"
+      sim = ParallelSimulation_With_Catalyst(resolution = args.res,
+                                           meshtype = args.mesh,
+                                           iterations = args.timesteps,
+                                           pv_script = args.script)
+      sim.initialize()
+      sim.main_loop()
+      sim.finalize_catalyst()
 
+parser = argparse.ArgumentParser(\
+    description="heat diffusion miniapp for ParaView Catalyst (v2) testing")
+parser.add_argument("-t", "--timesteps", type=int,
+    help="number of timesteps to run the miniapp (default: 1000)", default=1000)
+parser.add_argument("--res",  type=int,
+    help="resolution in each coordinate direction (default: 64)", default=64)
+parser.add_argument("-m", "--mesh", type=str, default="uniform",
+    help="mesh type (default: uniform)")
+parser.add_argument("-s", "--script", type=str,
+    help="path(s) to the Catalyst script(s) to use for in situ processing.",
+    default="../C++/catalyst_state.py")
+parser.add_argument("--insitu",
+    help="toggle the use of the in-situ vis coupling with Catalyst",
+    type=eval, 
+    choices=[True, False], 
+    default='True')
 
+if __name__ == "__main__":
+    args = parser.parse_args()
+    main(args)
