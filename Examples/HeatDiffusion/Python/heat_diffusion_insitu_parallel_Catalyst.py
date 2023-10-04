@@ -221,8 +221,8 @@ class ParallelSimulation_With_Catalyst(Simulation):
         mesh["fields/temperature/values"].set_external(self.v.ravel())
 
         # create a vertex associated field called "point_ghosts"
-        mesh["fields/vtkGhostType/association"] = "vertex";
-        mesh["fields/vtkGhostType/topology"] = "mesh";
+        mesh["fields/vtkGhostType/association"] = "vertex"
+        mesh["fields/vtkGhostType/topology"] = "mesh"
         mesh["fields/vtkGhostType/values"].set_external(self.ghosts.ravel())
         
         # make sure the mesh we created conforms to the blueprint

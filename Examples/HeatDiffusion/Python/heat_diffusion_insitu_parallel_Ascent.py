@@ -125,7 +125,7 @@ class ParallelSimulation_With_Ascent(Simulation):
         ascent_opts = conduit.Node()
         ascent_opts["mpi_comm"] = MPI.COMM_WORLD.py2f()
         ascent_opts["exceptions"] = "forward"
-        ascent_opts["ghost_field_name"] = "point_ghosts";
+        ascent_opts["ghost_field_name"] = "point_ghosts"
         # open Ascent
         self.a = ascent.mpi.Ascent()
         self.a.open(ascent_opts)
@@ -135,7 +135,7 @@ class ParallelSimulation_With_Ascent(Simulation):
         
         if self.MeshType == "uniform":
           # create the coordinate set
-          self.mesh["coordsets/coords/type"] = self.MeshType;
+          self.mesh["coordsets/coords/type"] = self.MeshType
           self.mesh["coordsets/coords/dims/i"] = self.xres + 2
           self.mesh["coordsets/coords/dims/j"] = self.yres + 2
           self.mesh["coordsets/coords/origin/x"] = 0.0
@@ -180,20 +180,20 @@ class ParallelSimulation_With_Ascent(Simulation):
           self.mesh["topologies/mesh/elements/connectivity"].set_external(self.connectivity)
 
         # add the topology, implicitly derived from the coordinate set
-        self.mesh["topologies/mesh/type"] = self.MeshType;
-        self.mesh["topologies/mesh/coordset"] = "coords";
+        self.mesh["topologies/mesh/type"] = self.MeshType
+        self.mesh["topologies/mesh/coordset"] = "coords"
         
         # create a vertex associated field called "temperature"
-        self.mesh["fields/temperature/association"] = "vertex";
-        self.mesh["fields/temperature/topology"] = "mesh";
+        self.mesh["fields/temperature/association"] = "vertex"
+        self.mesh["fields/temperature/topology"] = "mesh"
         # set_external does not handle multidimensional numpy arrays or
         # multidimensional complex strided views into numpy arrays.
         # Views that are effectively 1D-strided are supported.
         self.mesh["fields/temperature/values"].set_external(self.v.ravel())
 
         # create a vertex associated field called "point_ghosts"
-        self.mesh["fields/point_ghosts/association"] = "vertex";
-        self.mesh["fields/point_ghosts/topology"] = "mesh";
+        self.mesh["fields/point_ghosts/association"] = "vertex"
+        self.mesh["fields/point_ghosts/topology"] = "mesh"
         self.mesh["fields/point_ghosts/values"].set_external(self.ghosts.ravel())
         
         # make sure the mesh we created conforms to the blueprint
@@ -216,10 +216,10 @@ class ParallelSimulation_With_Ascent(Simulation):
         # declare a scene (s1) to render the dataset
         self.scenes = add_act["scenes"]
         # our first scene (named 's1') will render the field 'temperature'
-        self.scenes["s1/plots/p1/type"] = "pseudocolor";
-        self.scenes["s1/plots/p1/field"] = "temperature";
+        self.scenes["s1/plots/p1/type"] = "pseudocolor"
+        self.scenes["s1/plots/p1/field"] = "temperature"
         # add a second plot to draw the grid lines
-        self.scenes["s1/plots/p2/type"] = "mesh";
+        self.scenes["s1/plots/p2/type"] = "mesh"
 
     def SimulateOneTimestep(self):
         Simulation.SimulateOneTimestep(self)
@@ -257,8 +257,8 @@ class ParallelSimulation_With_Ascent(Simulation):
         add_extr["action"] = "add_extracts"
         extracts = add_extr["extracts"]
         extracts["e1/type"]="relay"
-        extracts["e1/params/path"] = savedir + "mesh";
-        extracts["e1/params/protocol"] = "blueprint/mesh/hdf5";
+        extracts["e1/params/path"] = savedir + "mesh"
+        extracts["e1/params/protocol"] = "blueprint/mesh/hdf5"
         self.a.execute(action)
         self.a.close()
 
