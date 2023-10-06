@@ -7,7 +7,7 @@
 # this version runs in parallel, splitting the domain in the vertical direction
 #
 # Run: mpiexec -n 2 python3 heat_diffusion_insitu_parallel_Ascent.py \
-#                           --res=64 -t 1000  --mesh=uniform
+#                           --res=64 -t 1000 --mesh=uniform
 #
 # Tested with Python 3.10.12, Tue 12 Sep 16:28:23 CEST 2023
 ##############################################################################
@@ -16,16 +16,18 @@ import numpy as np
 import conduit
 import conduit.blueprint
 import ascent.mpi
+import matplotlib.pyplot as plt
 
 from mpi4py import MPI
 
 # print details about ascent
-print(ascent.mpi.about())
+# print(ascent.mpi.about())
 
 class Simulation:
     """
-    A simple 4-point stencil simulation for the heat equation
-    
+    A simple 4-point stencil simulation for the heat equation to be run in serial mode only.
+    The domain (X, Y) is [0.0, 1.0] x [0.0, 1.0]
+
     Attributes
     ----------
     resolution : int
@@ -39,17 +41,15 @@ class Simulation:
         self.iteration = 0 # current iteration
         self.Max_iterations = iterations
         self.xres = resolution
-        # self.yres is redefined when splitting the parallel domain
+        self.yres = resolution # is redefined when splitting the parallel domain
         self.dx = 1.0 / (self.xres + 1)
 
     def Initialize(self):
         """ 2 additional boundary points are added. Iterations will only touch
         the internal grid points.
-        A mesh description using Conduit is prepared, sharing the scalar field
-        array via zero-copy
         """
         self.rmesh_dims = [self.yres + 2, self.xres + 2]
-        print("dimensions = ", self.rmesh_dims)
+        print("Rank ", self.par_rank, ": dimensions = ", self.rmesh_dims)
         self.v = np.zeros(self.rmesh_dims) # includes 2 ghosts
         self.ghosts = np.zeros(self.rmesh_dims)
         self.vnew = np.zeros([self.yres, self.xres])
@@ -75,7 +75,13 @@ class Simulation:
           self.v[-1,:] = self.v[0,:] * math.exp(-math.pi)
 
     def Finalize(self):
-        pass
+        fig, ax = plt.subplots()
+        CS = ax.contour(self.v, levels=10)
+        ax.clabel(CS, inline=True, fontsize=10)
+        ax.set_title('Temperature iso-contours')
+        fname = f'Temperature-iso-contours.{self.iteration:04d}.png'
+        plt.savefig(fname)
+        print("Final image \"", fname, "\" written to disk", sep="")
 
     def SimulateOneTimestep(self):
         self.iteration += 1
@@ -88,8 +94,10 @@ class Simulation:
         self.v[1:-1,1:-1] = self.vnew.copy()
 
     def MainLoop(self, _frequency=100):
-      while self.iteration < self.Max_iterations:
-        self.SimulateOneTimestep()
+        while self.iteration < self.Max_iterations:
+            self.SimulateOneTimestep()
+
+# define a sub-class of Simulation to add an Ascent in-situ coupling
 
 class ParallelSimulation_With_Ascent(Simulation):
     """
@@ -105,13 +113,16 @@ class ParallelSimulation_With_Ascent(Simulation):
         independent of the underlying grid since it uses a simple 4-point stencil.
         Our aim is to demonstrate the use of Conduit and verify that Ascent can process
         each MPI partition correcly with all 4 grid types.
+    verbose : boolean
+        prints the Conduit node(s) describing the mesh
     """
 
-    def __init__(self, resolution=64, iterations=100, meshtype="uniform"):
+    def __init__(self, resolution=64, iterations=100, meshtype="uniform", verbose=False):
         self.comm = MPI.COMM_WORLD
         Simulation.__init__(self, resolution, iterations)
         self.MeshType = meshtype
-
+        self.verbose = verbose
+        
     # Override Initialize for parallel
     def Initialize(self):
         self.par_size = self.comm.Get_size()
@@ -125,7 +136,11 @@ class ParallelSimulation_With_Ascent(Simulation):
         ascent_opts = conduit.Node()
         ascent_opts["mpi_comm"] = MPI.COMM_WORLD.py2f()
         ascent_opts["exceptions"] = "forward"
-        ascent_opts["ghost_field_name"] = "point_ghosts"
+        if self.MeshType in ('uniform', 'rectilinear'):
+          ascent_opts["ghost_field_name"] = "point_ghosts"
+        else:
+          # not implemented yet
+          pass
         # open Ascent
         self.a = ascent.mpi.Ascent()
         self.a.open(ascent_opts)
@@ -190,11 +205,12 @@ class ParallelSimulation_With_Ascent(Simulation):
         # multidimensional complex strided views into numpy arrays.
         # Views that are effectively 1D-strided are supported.
         self.mesh["fields/temperature/values"].set_external(self.v.ravel())
-
-        # create a vertex associated field called "point_ghosts"
-        self.mesh["fields/point_ghosts/association"] = "vertex"
-        self.mesh["fields/point_ghosts/topology"] = "mesh"
-        self.mesh["fields/point_ghosts/values"].set_external(self.ghosts.ravel())
+        
+        if self.MeshType in ('uniform', 'rectilinear'):
+          # create a vertex associated field called "point_ghosts"
+          self.mesh["fields/point_ghosts/association"] = "vertex"
+          self.mesh["fields/point_ghosts/topology"] = "mesh"
+          self.mesh["fields/point_ghosts/values"].set_external(self.ghosts.ravel())
         
         # make sure the mesh we created conforms to the blueprint
         verify_info = conduit.Node()
@@ -202,11 +218,8 @@ class ParallelSimulation_With_Ascent(Simulation):
           print("Mesh Verify failed!")
           print(verify_info.to_yaml())
         else:
-          pass
-          #print(self.mesh.to_yaml())
-    
-        # print the mesh we created
-        # print(self.mesh.to_yaml())
+          if self.verbose:
+            print(self.mesh)
 
         # setup actions
         self.actions = conduit.Node()
@@ -243,6 +256,10 @@ class ParallelSimulation_With_Ascent(Simulation):
         self.SimulateOneTimestep()
         if not self.iteration % frequency:
           self.mesh["state/cycle"] = self.iteration
+          self.mesh["state/time"] = self.iteration * 0.1
+          self.mesh["state/title"] = "2D Heat diffusion simulation"
+          self.mesh["state/info"] = "In-situ pseudocolor rendering of temperature"
+          
           self.scenes["s1/renders/r1/image_name"] = "temperature-par.%04d" % self.iteration
           # execute the actions
           self.a.publish(self.mesh)
@@ -263,40 +280,43 @@ class ParallelSimulation_With_Ascent(Simulation):
         self.a.close()
 
 def main(args):
-    # run without in-situ Catalyst coupling and without MPI
-    if not args.insitu:
+    # run without in-situ coupling and without MPI
+    if not args.noinsitu:
       sim0 = Simulation(resolution=args.res, iterations=args.timesteps)
-      sim0.initialize()
-      sim0.main_loop()
-      sim0.finalize()
+      sim0.Initialize()
+      sim0.MainLoop()
+      sim0.Finalize()
     else:
     # run with in-situ Ascent coupling and with MPI
     # meshtype can be one of "uniform", "rectilinear", "structured", "unstructured"
       sim = ParallelSimulation_With_Ascent(resolution = args.res,
                                            meshtype = args.mesh,
-                                           iterations = args.timesteps)
+                                           iterations = args.timesteps,
+                                           verbose = args.verbose)
       sim.Initialize()
       sim.MainLoop(frequency = args.frequency)
       sim.Finalize(savedir = args.dir)
 
 parser = argparse.ArgumentParser(\
-    description="heat diffusion miniapp for ParaView Catalyst (v2) testing")
+    description="heat diffusion miniapp for in-situ visualization testing with Ascent")
 parser.add_argument("-t", "--timesteps", type=int,
     help="number of timesteps to run the miniapp (default: 1000)", default=1000)
 parser.add_argument("--res",  type=int,
     help="resolution in each coordinate direction (default: 64)", default=64)
 parser.add_argument("-m", "--mesh", type=str, default="uniform",
+    choices=["uniform", "rectilinear", "structured", "unstructured"],
     help="mesh type (default: uniform)")
 parser.add_argument("-f", "--frequency", type=int, default=50,
     help="How often should the Ascent script be executed in situ processing.")
 parser.add_argument("-d", "--dir", type=str,
     help="path to a directory where to dump the Blueprint output",
     default="/dev/shm/")
-parser.add_argument("--insitu",
-    help="toggle the use of the in-situ vis coupling with Catalyst",
-    type=eval, 
-    choices=[True, False], 
-    default='True')
+parser.add_argument("-n", "--noinsitu",
+    help="toggle the use of the in-situ vis coupling with Ascent",
+    action='store_false')  # on/off flag)
+parser.add_argument("-v", "--verbose",
+    help="toggle printing of the conduit nodes",
+    action='store_true')  # on/off flag
 
 if __name__ == "__main__":
     args = parser.parse_args()

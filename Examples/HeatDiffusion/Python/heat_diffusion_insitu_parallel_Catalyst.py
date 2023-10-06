@@ -29,7 +29,7 @@ from mpi4py import MPI
 class Simulation:
     """
     A simple 4-point stencil simulation for the heat equation.
-    The domain (x, Y) is [0.0, 1.0] x [0.0, 1.0]
+    The domain (X, Y) is [0.0, 1.0] x [0.0, 1.0]
 
     Attributes
     ----------
@@ -44,10 +44,10 @@ class Simulation:
         self.iteration = 0 # current iteration
         self.Max_iterations = iterations
         self.xres = resolution
-        self.yres = self.xres   # self.yres is redefined when splitting the parallel domain
+        self.yres = resolution  # is redefined when splitting the parallel domain
         self.dx = 1.0 / (self.xres + 1)
 
-    def initialize(self):
+    def Initialize(self):
         """ 2 additional boundary points are added. Iterations will only touch
         the internal grid points.
         """
@@ -76,16 +76,17 @@ class Simulation:
           #last (top) row
           self.v[-1,:] = self.v[0,:] * math.exp(-math.pi)
 
-    def finalize(self):
+    def Finalize(self):
         """plot the scalar field iso-contour lines"""
         fig, ax = plt.subplots()
         CS = ax.contour(self.v, levels=10)
         ax.clabel(CS, inline=True, fontsize=10)
         ax.set_title('Temperature iso-contours')
-        plt.savefig(f'Temperature-iso-contours.{self.iteration:04d}.png')
-        #plt.show()
+        fname = f'Temperature-iso-contours.{self.iteration:04d}.png'
+        plt.savefig(fname)
+        print("Final image \"", fname, "\" written to disk", sep="")
 
-    def simulate_one_timestep(self):
+    def SimulateOneTimestep(self):
         self.iteration += 1
         # print("Simulating time step: iteration=%d" % self.iteration)
 
@@ -96,9 +97,9 @@ class Simulation:
         # copy vnew to the interior region of v, leaving the boundary walls untouched.
         self.v[1:-1,1:-1] = self.vnew.copy()
 
-    def main_loop(self):
+    def MainLoop(self):
         while self.iteration < self.Max_iterations:
-            self.simulate_one_timestep()
+            self.SimulateOneTimestep()
 
 # define a sub-class of Simulation to add a Catalyst in-situ coupling
 
@@ -118,18 +119,20 @@ class ParallelSimulation_With_Catalyst(Simulation):
         each MPI partition correcly with all 4 grid types.
     pv_script : string
         a ParaView Catalyst script file to generate images and other visualization outputs
+    verbose : boolean
+        prints the Conduit node(s) describing the mesh
     """
 
-    def __init__(self, resolution=64, iterations=100, meshtype="uniform", pv_script="catalyst_state.py"):
+    def __init__(self, resolution=64, iterations=100, meshtype="uniform", pv_script="catalyst_state.py", verbose=False):
         self.comm = MPI.COMM_WORLD
         Simulation.__init__(self, resolution, iterations)
         self.MeshType = meshtype
 
         self.insitu = conduit.Node()
         self.pv_script = pv_script
-        
+        self.verbose = verbose
     # Add Catalyst mesh definition
-    def initialize(self):
+    def Initialize(self):
         self.par_size = self.comm.Get_size()
         self.par_rank = self.comm.Get_rank()
         # split the parallel domain along the Y axis. No error check!
@@ -158,12 +161,12 @@ class ParallelSimulation_With_Catalyst(Simulation):
                     self.connectivity[4*i+3] = ix + iy*(self.xres + 2) + 1
                     i += 1
                     
-        Simulation.initialize(self)
+        Simulation.Initialize(self)
         self.initialize_catalyst()
 
-    def main_loop(self):
+    def MainLoop(self):
       while self.iteration < self.Max_iterations:
-        self.simulate_one_timestep()
+        self.SimulateOneTimestep()
         if self.par_size > 1:
           # if in parallel, exchange ghost cells now
           # define who is my neighbor above and below
@@ -230,7 +233,7 @@ class ParallelSimulation_With_Catalyst(Simulation):
         if not conduit.blueprint.mesh.verify(mesh, verify_info):
             print("Heat mesh verify failed!")
         else:
-            if self.iteration == 1:
+            if self.verbose and self.iteration == 1:
               print(mesh)
 
         state = exec_params["catalyst/state"]
@@ -252,20 +255,21 @@ class ParallelSimulation_With_Catalyst(Simulation):
         
 def main(args):
     # run without in-situ Catalyst coupling and without MPI
-    if not args.insitu:
+    if not args.noinsitu:
       sim0 = Simulation(resolution=args.res, iterations=args.timesteps)
-      sim0.initialize()
-      sim0.main_loop()
-      sim0.finalize()
+      sim0.Initialize()
+      sim0.MainLoop()
+      sim0.Finalize()
     else:
     # run with in-situ Catalyst coupling and with MPI
     # meshtype can be one of "uniform", "rectilinear", "structured", "unstructured"
       sim = ParallelSimulation_With_Catalyst(resolution = args.res,
                                            meshtype = args.mesh,
                                            iterations = args.timesteps,
-                                           pv_script = args.script)
-      sim.initialize()
-      sim.main_loop()
+                                           pv_script = args.script,
+                                           verbose = args.verbose)
+      sim.Initialize()
+      sim.MainLoop()
       sim.finalize_catalyst()
 
 parser = argparse.ArgumentParser(\
@@ -275,15 +279,17 @@ parser.add_argument("-t", "--timesteps", type=int,
 parser.add_argument("--res",  type=int,
     help="resolution in each coordinate direction (default: 64)", default=64)
 parser.add_argument("-m", "--mesh", type=str, default="uniform",
+    choices=["uniform", "rectilinear", "structured", "unstructured"],
     help="mesh type (default: uniform)")
 parser.add_argument("-s", "--script", type=str,
     help="path(s) to the Catalyst script(s) to use for in situ processing.",
     default="../C++/catalyst_state.py")
-parser.add_argument("--insitu",
-    help="toggle the use of the in-situ vis coupling with Catalyst",
-    type=eval, 
-    choices=[True, False], 
-    default='True')
+parser.add_argument("-n", "--noinsitu",
+    help="toggle the use of the in-situ vis coupling with Ascent",
+    action='store_false')  # on/off flag)
+parser.add_argument("-v", "--verbose",
+    help="toggle printing of the conduit nodes",
+    action='store_true')  # on/off flag
 
 if __name__ == "__main__":
     args = parser.parse_args()

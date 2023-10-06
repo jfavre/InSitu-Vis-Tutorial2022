@@ -8,7 +8,7 @@ paraview.simple._DisableFirstRenderCameraReset()
 
 # Create a new 'Render View'
 renderView1 = GetRenderView()
-renderView1.ViewSize = [800,800]
+renderView1.ViewSize = [1024,1024]
 renderView1.CenterOfRotation = [0.5, 0.5, 0.0]
 renderView1.CameraPosition = [0.5, 0.5, 10000.0]
 renderView1.CameraFocalPoint = [0.5, 0.5, 0.0]
@@ -46,16 +46,16 @@ ResetCamera()
 
 pNG1 = CreateExtractor('PNG', renderView1, registrationName='PNG1')
 pNG1.Trigger = 'TimeStep'
-pNG1.Trigger.Frequency = 10
+pNG1.Trigger.Frequency = 100
 pNG1.Writer.FileName = basename + 'view-{timestep:06d}{camera}.png'
-pNG1.Writer.ImageResolution = [800,800]
+pNG1.Writer.ImageResolution = [1024,1024]
 pNG1.Writer.Format = 'PNG'
 
 # The vtkPartitionedDataSet type works for all our supported types
 
 vTP1 = CreateExtractor('VTPD', reader, registrationName='VTPD1')
 vTP1.Trigger = 'TimeStep'
-vTP1.Trigger.Frequency = 10
+vTP1.Trigger.Frequency = 100
 vTP1.Writer.FileName = 'datasets/dataset_{timestep:06d}.vtpd'
 
 SetActiveSource(reader)
