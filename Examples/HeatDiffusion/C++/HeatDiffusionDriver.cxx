@@ -1,6 +1,10 @@
 /*
- A parallel heat diffusion solver for the Laplacian equation in 2D
+ A parallel heat diffusion solver for the Laplacian equation 2D
  Written by Jean M. Favre, Swiss National Supercomputing Center
+ 
+ The domain is split amongt MPI tasks using a 2D partitioning scheme.
+ There is little error checking, so it is recommended to use a grid resolution
+ that is a power of 2, and a number of tasks that is a number N^2, such as 1, 4, 9
  Last tested Wed  3 May 12:20:11 CEST 2023
 */
 #include <iostream>

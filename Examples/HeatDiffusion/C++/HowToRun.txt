@@ -31,16 +31,20 @@ mkdir buildAscent
 module load daint-gpu CMake cudatoolkit Ascent/0.9.1-CrayGNU-21.09
 
 # locally on my laptop, I use
-export LD_LIBRARY_PATH=/local/apps/Ascent/install/ascent-v0.9.1/lib:/local/apps/Ascent/install/vtk-m-v1.9.1/lib
+export LD_LIBRARY_PATH=/local/apps/Ascent/install/ascent-develop/lib:/local/apps/Ascent/install/vtk-m-v2.0.0/lib
 
 ccmake -B buildAscent -S . \
   -DCMAKE_BUILD_TYPE=Release \
   -DINSITU=Ascent 
 
 # if compiled locally, add
-  -DAscent_DIR=/local/apps/Ascent/install/ascent-develop/lib/cmake/ascent/
+ccmake -B buildAscent -S . \
+ -DCMAKE_BUILD_TYPE=Release \
+ -DINSITU=Ascent \
+ -DAscent_DIR=/local/apps/Ascent/install/ascent-develop/lib/cmake/ascent
   
 cmake --build buildAscent
+. ~/ascentv0.9.2.sh
 
 get the files {ascent_actions.yaml,plot_actions.yaml} in your runtime directory
 export LD_LIBRARY_PATH=/local/apps/Ascent/install/vtk-m-v2.0.0/lib
