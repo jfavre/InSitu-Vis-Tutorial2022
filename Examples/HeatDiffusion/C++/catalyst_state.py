@@ -14,6 +14,7 @@ renderView1.CameraPosition = [0.5, 0.5, 10000.0]
 renderView1.CameraFocalPoint = [0.5, 0.5, 0.0]
 renderView1.CameraFocalDisk = 1.0
 renderView1.CameraParallelScale = 16.25
+renderView1.AxesGrid.Visibility = 1
 
 LoadPalette(paletteName='WhiteBackground')
 

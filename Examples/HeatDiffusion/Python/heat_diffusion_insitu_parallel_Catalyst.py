@@ -6,7 +6,7 @@
 #
 # Can run in parallel (if in-situ is turned on), splitting the domain in
 # the vertical direction.
-# There is no error checking on grid resolution and MPI doman splitting.
+# There is no error checking on grid resolution and MPI domain splitting.
 # it is strongly advised to use grid resolutions like 2^N and
 # an even number of MPI partitions, e.g.
 #
@@ -26,6 +26,7 @@ import catalyst_conduit.blueprint
 
 from mpi4py import MPI
 
+
 class Simulation:
     """
     A simple 4-point stencil simulation for the heat equation.
@@ -41,7 +42,7 @@ class Simulation:
     def __init__(self, resolution=64, iterations=100):
         self.par_size = 1
         self.par_rank = 0
-        self.iteration = 0 # current iteration
+        self.iteration = 0  # current iteration
         self.Max_iterations = iterations
         self.xres = resolution
         self.yres = resolution  # is redefined when splitting the parallel domain
@@ -59,22 +60,22 @@ class Simulation:
 
     def set_initial_bc(self):
         if self.par_size > 1:
-          if self.par_rank == 0:
-            self.v[0,:] = [math.sin(math.pi * j * self.dx)
-                           for j in range(self.rmesh_dims[1])]
-            self.ghosts[-1,:] = 1
-          elif self.par_rank == (self.par_size-1):
-            self.v[-1,:] = self.v[0,:] * math.exp(-math.pi)
-            self.ghosts[0,:] = 1
-          else:
-            self.ghosts[0,:] = 1
-            self.ghosts[-1,:] = 1
+            if self.par_rank == 0:
+                self.v[0, :] = [math.sin(math.pi * j * self.dx)
+                               for j in range(self.rmesh_dims[1])]
+                self.ghosts[-1, :] = 1
+            elif self.par_rank == (self.par_size - 1):
+                self.v[-1, :] = self.v[0, :] * math.exp(-math.pi)
+                self.ghosts[0, :] = 1
+            else:
+                self.ghosts[0, :] = 1
+                self.ghosts[-1, :] = 1
         else:
-          #first (bottom) row
-          self.v[0,:] = [math.sin(math.pi * j * self.dx)
-                         for j in range(self.rmesh_dims[1])]
-          #last (top) row
-          self.v[-1,:] = self.v[0,:] * math.exp(-math.pi)
+            # first (bottom) row
+            self.v[0, :] = [math.sin(math.pi * j * self.dx)
+                           for j in range(self.rmesh_dims[1])]
+            # last (top) row
+            self.v[-1, :] = self.v[0, :] * math.exp(-math.pi)
 
     def Finalize(self):
         """plot the scalar field iso-contour lines"""
@@ -87,21 +88,22 @@ class Simulation:
         print("Final image \"", fname, "\" written to disk", sep="")
 
     def SimulateOneTimestep(self):
+        # there is no ghost-data exchange. Run in serial-mode only
         self.iteration += 1
-        # print("Simulating time step: iteration=%d" % self.iteration)
 
-        self.vnew = 0.25 * ( self.v[2:, 1:-1]  + # north neighbor
-                             self.v[0:-2, 1:-1] + # south neighbor
-                             self.v[1:-1, 2:] + # east neighbor
-                             self.v[1:-1, :-2]) # west neighbor
+        self.vnew = 0.25 * ( self.v[2:, 1:-1]  +  # north neighbor
+                             self.v[0:-2, 1:-1] +  # south neighbor
+                             self.v[1:-1, 2:] +  # east neighbor
+                             self.v[1:-1, :-2])  # west neighbor
         # copy vnew to the interior region of v, leaving the boundary walls untouched.
-        self.v[1:-1,1:-1] = self.vnew.copy()
+        self.v[1:-1, 1:-1] = self.vnew.copy()
 
     def MainLoop(self):
         while self.iteration < self.Max_iterations:
             self.SimulateOneTimestep()
 
 # define a sub-class of Simulation to add a Catalyst in-situ coupling
+
 
 class ParallelSimulation_With_Catalyst(Simulation):
     """
@@ -132,114 +134,120 @@ class ParallelSimulation_With_Catalyst(Simulation):
         self.pv_script = pv_script
         self.verbose = verbose
     # Add Catalyst mesh definition
+
     def Initialize(self):
         self.par_size = self.comm.Get_size()
         self.par_rank = self.comm.Get_rank()
         # split the parallel domain along the Y axis. No error check!
         self.yres = self.xres // self.par_size
         if self.MeshType == "rectilinear":
-          self.xc = np.linspace(0, 1, self.xres + 2)
-          self.yc = np.linspace((self.par_rank * self.yres) * self.dx,
-                                (((self.par_rank + 1) * self.yres) + 1)* self.dx,
-                                self.yres + 2)
+            y_min = (self.par_rank * self.yres) * self.dx
+            y_max = (((self.par_rank + 1) * self.yres) + 1) * self.dx
+            self.xc = np.linspace(0, 1, self.xres + 2)
+            self.yc = np.linspace(y_min, y_max, self.yres + 2)
         if self.MeshType in ('structured', 'unstructured'):
-          self.xc, self.yc = np.meshgrid(np.linspace(0, 1, self.xres + 2),
-                                         np.linspace((self.par_rank * self.yres) * self.dx,
-                                                     (((self.par_rank + 1) * self.yres) + 1)* self.dx,
-                                                     self.yres + 2),
-                                         indexing='xy')
-                                         
+            y_min = (self.par_rank * self.yres) * self.dx
+            y_max = (((self.par_rank + 1) * self.yres) + 1)  * self.dx
+            self.xc, self.yc = np.meshgrid(np.linspace(0, 1, self.xres + 2),
+                                           np.linspace(y_min, y_max, self.yres + 2),
+                                           indexing='xy')
+
         if self.MeshType == "unstructured":
             # we describe the grid as a list of VTK 2D Quadrilaterals
-            self.connectivity = np.zeros(((self.xres + 1) * (self.yres + 1) * 4), dtype=np.int32)
-            i=0
-            for iy in range(self.yres+1):
-                for ix in range(self.xres+1):
-                    self.connectivity[4*i+0] = ix + iy*(self.xres + 2)
-                    self.connectivity[4*i+1] = ix + (iy+1)*(self.xres + 2)
-                    self.connectivity[4*i+2] = ix + (iy+1)*(self.xres + 2)+ 1
-                    self.connectivity[4*i+3] = ix + iy*(self.xres + 2) + 1
+            nbOfQuads = (self.xres + 1) * (self.yres + 1) * 4
+            self.connectivity = np.zeros(nbOfQuads, dtype=np.int32)
+            i = 0
+            for iy in range(self.yres + 1):
+                for ix in range(self.xres + 1):
+                    self.connectivity[4 * i + 0] = ix + iy * (self.xres + 2)
+                    self.connectivity[4 * i + 1] = ix + (iy + 1) * (self.xres + 2)
+                    self.connectivity[4 * i + 2] = ix + (iy + 1) * (self.xres + 2) + 1
+                    self.connectivity[4 * i + 3] = ix + iy * (self.xres + 2) + 1
                     i += 1
-                    
+
         Simulation.Initialize(self)
         self.initialize_catalyst()
 
-    def MainLoop(self):
-      while self.iteration < self.Max_iterations:
-        self.SimulateOneTimestep()
-        if self.par_size > 1:
-          # if in parallel, exchange ghost cells now
-          # define who is my neighbor above and below
-          below = self.par_rank - 1
-          above = self.par_rank + 1
-          if self.par_rank == 0:
-            below = MPI.PROC_NULL   # tells MPI not to perform send/recv
-          if self.par_rank == (self.par_size-1):
-            above = MPI.PROC_NULL   # should only receive/send from/to below
-          self.comm.Sendrecv([self.v[-2,], self.xres + 2, MPI.DOUBLE],
-                             dest=above, recvbuf=[self.v[-0,], self.xres + 2, MPI.DOUBLE], source=below)
-          self.comm.Sendrecv([self.v[1,], self.xres + 2, MPI.DOUBLE],
-                             dest=below, recvbuf=[self.v[-1,], self.xres + 2, MPI.DOUBLE], source=above)
+    def SimulateOneTimestep(self):
+        Simulation.SimulateOneTimestep(self)
 
-        exec_params = conduit.Node()
-        channel = exec_params["catalyst/channels/grid"]
-        channel["type"] = "mesh"
-        mesh = channel["data"]
+        if self.par_size > 1:
+            # if in parallel, exchange ghost cells now
+            # define who is my neighbor above and below
+            below = self.par_rank - 1
+            above = self.par_rank + 1
+            if self.par_rank == 0:
+                below = MPI.PROC_NULL   # tells MPI not to perform send/recv
+            if self.par_rank == (self.par_size - 1):
+                above = MPI.PROC_NULL   # should only receive/send from/to below
+            self.comm.Sendrecv([self.v[-2,], self.xres + 2, MPI.DOUBLE], dest=above,
+                               recvbuf=[self.v[-0,], self.xres + 2, MPI.DOUBLE], source=below)
+            self.comm.Sendrecv([self.v[1,], self.xres + 2, MPI.DOUBLE], dest=below,
+                               recvbuf=[self.v[-1,], self.xres + 2, MPI.DOUBLE], source=above)
+
+    def MainLoop(self):
+        while self.iteration < self.Max_iterations:
+            self.SimulateOneTimestep()
+
+            exec_params = conduit.Node()
+            channel = exec_params["catalyst/channels/grid"]
+            channel["type"] = "mesh"
+            mesh = channel["data"]
 
         # create the coordinate set
-        if self.MeshType == "rectilinear":
-            mesh["coordsets/coords/type"] = self.MeshType
-            mesh["coordsets/coords/values/x"].set_external(self.xc)
-            mesh["coordsets/coords/values/y"].set_external(self.yc)
-            mesh["coordsets/coords/values/z"].set(0.0)
-        elif self.MeshType == "uniform":
-            mesh["coordsets/coords/type"] = self.MeshType
-            mesh["coordsets/coords/dims/i"] = self.xres + 2
-            mesh["coordsets/coords/dims/j"] = self.yres + 2
-            mesh["coordsets/coords/origin/x"] = 0.0
-            mesh["coordsets/coords/origin/y"] = self.par_rank * self.yres * self.dx
-            mesh["coordsets/coords/spacing/dx"] = self.dx
-            mesh["coordsets/coords/spacing/dy"] = self.dx
-        else: # self.MeshType in ('structured', 'unstructured'):
-            mesh["coordsets/coords/type"] = "explicit"
-            mesh["coordsets/coords/values/x"].set_external(self.xc.ravel())
-            mesh["coordsets/coords/values/y"].set_external(self.yc.ravel())
-        mesh["topologies/mesh/type"] = self.MeshType
-        mesh["topologies/mesh/coordset"] = "coords"
+            if self.MeshType == "rectilinear":
+                mesh["coordsets/coords/type"] = self.MeshType
+                mesh["coordsets/coords/values/x"].set_external(self.xc)
+                mesh["coordsets/coords/values/y"].set_external(self.yc)
+                #mesh["coordsets/coords/values/z"].set(0.0)
+            elif self.MeshType == "uniform":
+                mesh["coordsets/coords/type"] = self.MeshType
+                mesh["coordsets/coords/dims/i"] = self.xres + 2
+                mesh["coordsets/coords/dims/j"] = self.yres + 2
+                mesh["coordsets/coords/origin/x"] = 0.0
+                mesh["coordsets/coords/origin/y"] = self.par_rank * self.yres * self.dx
+                mesh["coordsets/coords/spacing/dx"] = self.dx
+                mesh["coordsets/coords/spacing/dy"] = self.dx
+            else: # self.MeshType in ('structured', 'unstructured'):
+                mesh["coordsets/coords/type"] = "explicit"
+                mesh["coordsets/coords/values/x"].set_external(self.xc.ravel())
+                mesh["coordsets/coords/values/y"].set_external(self.yc.ravel())
+            mesh["topologies/mesh/type"] = self.MeshType
+            mesh["topologies/mesh/coordset"] = "coords"
 
-        if self.MeshType == "structured":
-            mesh["topologies/mesh/elements/dims/i"] = np.int32(self.xres + 1)
-            mesh["topologies/mesh/elements/dims/j"] = np.int32(self.yres + 1)
+            if self.MeshType == "structured":
+                mesh["topologies/mesh/elements/dims/i"] = np.int32(self.xres + 1)
+                mesh["topologies/mesh/elements/dims/j"] = np.int32(self.yres + 1)
 
-        if self.MeshType == "unstructured":
-            mesh["topologies/mesh/elements/shape"] = "quad"
-            mesh["topologies/mesh/elements/connectivity"].set_external(self.connectivity)
+            if self.MeshType == "unstructured":
+                mesh["topologies/mesh/elements/shape"] = "quad"
+                mesh["topologies/mesh/elements/connectivity"].set_external(self.connectivity)
 
         # create a vertex associated field called "temperature"
-        mesh["fields/temperature/association"] = "vertex"
-        mesh["fields/temperature/topology"] = "mesh"
+            mesh["fields/temperature/association"] = "vertex"
+            mesh["fields/temperature/topology"] = "mesh"
         # set_external does not handle multidimensional numpy arrays or
         # multidimensional complex strided views into numpy arrays.
         # Views that are effectively 1D-strided are supported.
-        mesh["fields/temperature/values"].set_external(self.v.ravel())
+            mesh["fields/temperature/values"].set_external(self.v.ravel())
 
         # create a vertex associated field called "point_ghosts"
-        mesh["fields/vtkGhostType/association"] = "vertex"
-        mesh["fields/vtkGhostType/topology"] = "mesh"
-        mesh["fields/vtkGhostType/values"].set_external(self.ghosts.ravel())
-        
-        # make sure the mesh we created conforms to the blueprint
-        verify_info = conduit.Node()
-        if not conduit.blueprint.mesh.verify(mesh, verify_info):
-            print("Heat mesh verify failed!")
-        else:
-            if self.verbose and self.iteration == 1:
-              print(mesh)
+            mesh["fields/vtkGhostType/association"] = "vertex"
+            mesh["fields/vtkGhostType/topology"] = "mesh"
+            mesh["fields/vtkGhostType/values"].set_external(self.ghosts.ravel())
 
-        state = exec_params["catalyst/state"]
-        state["timestep"] = self.iteration
-        state["time"] = self.iteration * 0.1
-        catalyst.execute(exec_params)
+        # make sure the mesh we created conforms to the blueprint
+            verify_info = conduit.Node()
+            if not conduit.blueprint.mesh.verify(mesh, verify_info):
+                print("Heat mesh verify failed!")
+            else:
+                if self.verbose and self.iteration == 1:
+                    print(mesh)
+
+            state = exec_params["catalyst/state"]
+            state["timestep"] = self.iteration
+            state["time"] = self.iteration * 0.1
+            catalyst.execute(exec_params)
 
     def initialize_catalyst(self):
         """Creates a Conduit node """
@@ -252,44 +260,47 @@ class ParallelSimulation_With_Catalyst(Simulation):
     def finalize_catalyst(self):
         """close"""
         catalyst.finalize(self.insitu)
-        
+
+
 def main(args):
     # run without in-situ Catalyst coupling and without MPI
     if not args.noinsitu:
-      sim0 = Simulation(resolution=args.res, iterations=args.timesteps)
-      sim0.Initialize()
-      sim0.MainLoop()
-      sim0.Finalize()
+        sim0 = Simulation(resolution=args.res, iterations=args.timesteps)
+        sim0.Initialize()
+        sim0.MainLoop()
+        sim0.Finalize()
     else:
-    # run with in-situ Catalyst coupling and with MPI
-    # meshtype can be one of "uniform", "rectilinear", "structured", "unstructured"
-      sim = ParallelSimulation_With_Catalyst(resolution = args.res,
-                                           meshtype = args.mesh,
-                                           iterations = args.timesteps,
-                                           pv_script = args.script,
-                                           verbose = args.verbose)
-      sim.Initialize()
-      sim.MainLoop()
-      sim.finalize_catalyst()
+        # run with in-situ Catalyst coupling and with MPI
+        # meshtype can be one of "uniform", "rectilinear", "structured", "unstructured"
+        sim = ParallelSimulation_With_Catalyst(resolution=args.res,
+                                               meshtype=args.mesh,
+                                               iterations=args.timesteps,
+                                               pv_script=args.script,
+                                               verbose=args.verbose)
+        sim.Initialize()
+        sim.MainLoop()
+        sim.finalize_catalyst()
 
-parser = argparse.ArgumentParser(\
+
+parser = argparse.ArgumentParser(
     description="heat diffusion miniapp for ParaView Catalyst (v2) testing")
 parser.add_argument("-t", "--timesteps", type=int,
-    help="number of timesteps to run the miniapp (default: 1000)", default=1000)
-parser.add_argument("--res",  type=int,
-    help="resolution in each coordinate direction (default: 64)", default=64)
+                    help="number of timesteps to run the miniapp (default: 1000)",
+                    default=1000)
+parser.add_argument("--res", type=int,
+                    help="resolution in each coordinate direction (default: 64)", default=64)
 parser.add_argument("-m", "--mesh", type=str, default="uniform",
-    choices=["uniform", "rectilinear", "structured", "unstructured"],
-    help="mesh type (default: uniform)")
+                    choices=["uniform", "rectilinear", "structured", "unstructured"],
+                    help="mesh type (default: uniform)")
 parser.add_argument("-s", "--script", type=str,
-    help="path(s) to the Catalyst script(s) to use for in situ processing.",
-    default="../C++/catalyst_state.py")
+                    help="path(s) to the Catalyst script(s) to use for in situ processing.",
+                    default="../C++/catalyst_state.py")
 parser.add_argument("-n", "--noinsitu",
-    help="toggle the use of the in-situ vis coupling with Ascent",
-    action='store_false')  # on/off flag)
+                    help="toggle the use of the in-situ vis coupling with Ascent",
+                    action='store_false')  # on/off flag)
 parser.add_argument("-v", "--verbose",
-    help="toggle printing of the conduit nodes",
-    action='store_true')  # on/off flag
+                    help="toggle printing of the conduit nodes",
+                    action='store_true')  # on/off flag
 
 if __name__ == "__main__":
     args = parser.parse_args()
