@@ -26,11 +26,14 @@
 int main(int argc, char *argv[])
 {
   int grid_resolution = 64;
-  int Catalyst_argc = argc;
+  bool verbose = false;
+  int Catalyst_argc = argc - 1;
   std::set<std::string> meshtypes = {"uniform", "rectilinear", "structured", "unstructured"};
   std::string meshtype = "uniform";
     
-  // we first capture the only two possible arguments allowed --res= and --mesh=
+  // it is assumed that arguments are first passed to create and verify the mesh, and that the
+  // Catalyst script filename is passed as the last argument
+  // we first capture --res= --mesh= and --verbose
   for (auto cc = 1; cc < argc; ++cc)
   {
     if (strncmp(argv[cc], "--res=", 6) == 0)
@@ -58,10 +61,15 @@ int main(int argc, char *argv[])
         }
       Catalyst_argc--;
     }
+    else if (strncmp(argv[cc], "--verbose", 9) == 0)
+    {
+      verbose = true; std::cerr <<  "verbosity increased ";
+      Catalyst_argc--;
+    }
   }
 
   std::cout  << "Creating mesh of type "<< meshtype << " of resolution " << grid_resolution << "x" << grid_resolution << std::endl;
-  simulation_data sim = {.resolution = grid_resolution, .mesh = meshtype};
+  simulation_data sim = {.resolution = grid_resolution, .mesh = meshtype, .verbose = verbose};
   SimInitialize(&sim);
 
   sim.cart_dims[0] = sim.cart_dims[1] = 0;
@@ -86,9 +94,9 @@ int main(int argc, char *argv[])
   AllocateGridMemory(&sim);
 
   set_initial_bc(&sim);
-
+    
 #if defined(USE_CATALYST) || defined(USE_ASCENT)
-  InSitu::Initialize(Catalyst_argc, &argv[argc-Catalyst_argc], &sim);
+  InSitu::Initialize(Catalyst_argc, &argv[argc - Catalyst_argc], &sim);
 #endif
   while (sim.gdel > TOL)
     {

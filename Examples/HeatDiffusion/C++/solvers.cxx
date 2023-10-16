@@ -182,13 +182,13 @@ void set_initial_bc(simulation_data *sim)
     {
     for (i = 0; i < (sim->bx+2); i++)
       {
-      sim->Temp[i] = sin(M_PI*(i+ sim->rankx * sim->bx)/(sim->resolution+1));              /* at y = 0; all x */
+      sim->Temp[i] = sin(M_PI*(i+ sim->rankx * sim->bx)/(sim->resolution+1)); // at y = 0; all x
       }
     }
   if (sim->ranky == (sim->cart_dims[1]-1)) {
     for (i = 0; i < (sim->bx+2); i++)
       {
-      sim->Temp[i+(sim->bx+2)*(sim->by+1)] = sin(M_PI*sim->cx[i])*exp(-M_PI);   // at y = 1; all x
+      sim->Temp[i+(sim->bx+2)*(sim->by+1)] = sin(M_PI*sim->cx[i])*exp(-M_PI); // at y = 1; all x
       }
     }
   memset(sim->oldTemp, 0, sizeof(double)*(sim->bx+2)*(sim->by+2));

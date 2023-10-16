@@ -3,6 +3,7 @@
 
 #include "solvers.h"
 #include <catalyst.hpp>
+#include <catalyst_conduit_blueprint.hpp>
 #include <cstring>
 #include <fstream>
 #include <iostream>
@@ -27,19 +28,7 @@ void Initialize(int argc, char* argv[], const simulation_data *sim)
   conduit_cpp::Node node;
   for (int cc = 0; cc < argc; ++cc)
   {
-    if (strcmp(argv[cc], "--output") == 0 && (cc + 1) < argc)
-    {
-      node["catalyst/pipelines/0/type"].set("io");
-      node["catalyst/pipelines/0/filename"].set(argv[cc + 1]);
-      node["catalyst/pipelines/0/channel"].set("grid");
-      ++cc;
-    }
-    else if (strcmp(argv[cc], "--exists") == 0 && (cc + 1) < argc)
-    {
-      filesToValidate.push_back(argv[cc + 1]);
-      ++cc;
-    }
-    else
+    // the Catalyst Python filename shoudl be the only argument at this time
     {
       const auto path = std::string(argv[cc]);
       // note: one can simply add the script file as follows:
@@ -85,7 +74,7 @@ void Execute(simulation_data& sim) //int cycle, double time, Grid& grid, Attribu
     {
     mesh["coordsets/coords/values/x"].set_external(sim.cx, (sim.bx + 2));
     mesh["coordsets/coords/values/y"].set_external(sim.cy, (sim.by + 2));
-    mesh["coordsets/coords/values/z"].set(0.0);
+    //mesh["coordsets/coords/values/z"].set(0.0);
     mesh["coordsets/coords/type"].set(sim.mesh);
     }
   else if(sim.mesh == "uniform")
@@ -146,6 +135,13 @@ void Execute(simulation_data& sim) //int cycle, double time, Grid& grid, Attribu
   fields["vtkGhostType/volume_dependent"].set("false");
   fields["vtkGhostType/values"].set_external(sim.Ghost, (sim.bx + 2) * (sim.by + 2));
 
+  conduit_cpp::Node verify_info;
+  if(!conduit_cpp::Blueprint::verify("mesh", mesh, verify_info))
+    std::cerr << "Heat mesh verify failed!" << std::endl;
+  else
+    if( sim.verbose && sim.iter == 1)
+      mesh.print() ;
+                    
   catalyst_status err = catalyst_execute(conduit_cpp::c_node(&exec_params));
   if (err != catalyst_status_ok)
   {
