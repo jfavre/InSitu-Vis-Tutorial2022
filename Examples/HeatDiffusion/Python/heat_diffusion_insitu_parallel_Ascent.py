@@ -22,7 +22,6 @@ import matplotlib.pyplot as plt
 
 from mpi4py import MPI
 
-
 class Simulation:
     """
     A simple 4-point stencil simulation for the heat equation in serial mode
@@ -159,7 +158,7 @@ class ParallelSimulation_With_Ascent(Simulation):
             self.mesh["coordsets/coords/origin/y"] = self.par_rank * self.yres * self.dx
             self.mesh["coordsets/coords/spacing/dx"] = self.dx
             self.mesh["coordsets/coords/spacing/dy"] = self.dx
-        if self.MeshType == "rectilinear":
+        elif self.MeshType == "rectilinear":
             xc = np.linspace(0, 1, self.xres + 2)
             y_min = (self.par_rank * self.yres) * self.dx
             y_max = (((self.par_rank + 1) * self.yres) + 1) * self.dx
@@ -168,7 +167,7 @@ class ParallelSimulation_With_Ascent(Simulation):
             self.mesh["coordsets/coords/values/x"].set_external(xc)
             self.mesh["coordsets/coords/values/y"].set_external(yc)
 
-        if self.MeshType in ('structured', 'unstructured'):
+        else: # self.MeshType in ('structured', 'unstructured'):
             y_min = (self.par_rank * self.yres) * self.dx
             y_max = (((self.par_rank + 1) * self.yres) + 1) * self.dx
             self.xc, self.yc = np.meshgrid(np.linspace(0, 1, self.xres + 2),

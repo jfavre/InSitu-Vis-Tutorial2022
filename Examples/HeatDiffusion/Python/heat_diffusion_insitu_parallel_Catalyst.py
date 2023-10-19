@@ -140,17 +140,50 @@ class ParallelSimulation_With_Catalyst(Simulation):
         self.par_rank = self.comm.Get_rank()
         # split the parallel domain along the Y axis. No error check!
         self.yres = self.xres // self.par_size
+
+        Simulation.Initialize(self)
+        self.initialize_catalyst()
+        
+        self.exec_params = conduit.Node()
+        self.channel = self.exec_params["catalyst/channels/grid"]
+        self.channel["type"] = "mesh"
+        self.mesh = self.channel["data"]
+
+        # create the coordinate set
         if self.MeshType == "rectilinear":
+            xc = np.linspace(0, 1, self.xres + 2)
             y_min = (self.par_rank * self.yres) * self.dx
             y_max = (((self.par_rank + 1) * self.yres) + 1) * self.dx
-            self.xc = np.linspace(0, 1, self.xres + 2)
-            self.yc = np.linspace(y_min, y_max, self.yres + 2)
-        if self.MeshType in ('structured', 'unstructured'):
+            yc = np.linspace(y_min, y_max, self.yres + 2)
+            self.mesh["coordsets/coords/type"] = self.MeshType
+            self.mesh["coordsets/coords/values/x"].set_external(xc)
+            self.mesh["coordsets/coords/values/y"].set_external(yc)
+            
+        elif self.MeshType == "uniform":
+            self.mesh["coordsets/coords/type"] = self.MeshType
+            self.mesh["coordsets/coords/dims/i"] = self.xres + 2
+            self.mesh["coordsets/coords/dims/j"] = self.yres + 2
+            self.mesh["coordsets/coords/origin/x"] = 0.0
+            self.mesh["coordsets/coords/origin/y"] = self.par_rank * self.yres * self.dx
+            self.mesh["coordsets/coords/spacing/dx"] = self.dx
+            self.mesh["coordsets/coords/spacing/dy"] = self.dx
+            
+        else: # self.MeshType in ('structured', 'unstructured'):
             y_min = (self.par_rank * self.yres) * self.dx
             y_max = (((self.par_rank + 1) * self.yres) + 1)  * self.dx
             self.xc, self.yc = np.meshgrid(np.linspace(0, 1, self.xres + 2),
                                            np.linspace(y_min, y_max, self.yres + 2),
                                            indexing='xy')
+            self.mesh["coordsets/coords/type"] = "explicit"
+            self.mesh["coordsets/coords/values/x"].set_external(self.xc.ravel())
+            self.mesh["coordsets/coords/values/y"].set_external(self.yc.ravel())
+            
+        self.mesh["topologies/mesh/type"] = self.MeshType
+        self.mesh["topologies/mesh/coordset"] = "coords"
+
+        if self.MeshType == "structured":
+            self.mesh["topologies/mesh/elements/dims/i"] = np.int32(self.xres + 1)
+            self.mesh["topologies/mesh/elements/dims/j"] = np.int32(self.yres + 1)
 
         if self.MeshType == "unstructured":
             # we describe the grid as a list of VTK 2D Quadrilaterals
@@ -164,9 +197,29 @@ class ParallelSimulation_With_Catalyst(Simulation):
                     self.connectivity[4 * i + 2] = ix + (iy + 1) * (self.xres + 2) + 1
                     self.connectivity[4 * i + 3] = ix + iy * (self.xres + 2) + 1
                     i += 1
+            self.mesh["topologies/mesh/elements/shape"] = "quad"
+            self.mesh["topologies/mesh/elements/connectivity"].set_external(self.connectivity)
 
-        Simulation.Initialize(self)
-        self.initialize_catalyst()
+        # create a vertex associated field called "temperature"
+        self.mesh["fields/temperature/association"] = "vertex"
+        self.mesh["fields/temperature/topology"] = "mesh"
+        # set_external does not handle multidimensional numpy arrays or
+        # multidimensional complex strided views into numpy arrays.
+        # Views that are effectively 1D-strided are supported.
+        self.mesh["fields/temperature/values"].set_external(self.v.ravel())
+
+        # create a vertex associated field called "point_ghosts"
+        self.mesh["fields/vtkGhostType/association"] = "vertex"
+        self.mesh["fields/vtkGhostType/topology"] = "mesh"
+        self.mesh["fields/vtkGhostType/values"].set_external(self.ghosts.ravel())
+
+        # make sure the mesh we created conforms to the blueprint
+        verify_info = conduit.Node()
+        if not conduit.blueprint.mesh.verify(self.mesh, verify_info):
+            print("Heat mesh verify failed!")
+        else:
+            if self.verbose:
+                print(self.mesh)
 
     def SimulateOneTimestep(self):
         Simulation.SimulateOneTimestep(self)
@@ -189,65 +242,10 @@ class ParallelSimulation_With_Catalyst(Simulation):
         while self.iteration < self.Max_iterations:
             self.SimulateOneTimestep()
 
-            exec_params = conduit.Node()
-            channel = exec_params["catalyst/channels/grid"]
-            channel["type"] = "mesh"
-            mesh = channel["data"]
-
-        # create the coordinate set
-            if self.MeshType == "rectilinear":
-                mesh["coordsets/coords/type"] = self.MeshType
-                mesh["coordsets/coords/values/x"].set_external(self.xc)
-                mesh["coordsets/coords/values/y"].set_external(self.yc)
-                #mesh["coordsets/coords/values/z"].set(0.0)
-            elif self.MeshType == "uniform":
-                mesh["coordsets/coords/type"] = self.MeshType
-                mesh["coordsets/coords/dims/i"] = self.xres + 2
-                mesh["coordsets/coords/dims/j"] = self.yres + 2
-                mesh["coordsets/coords/origin/x"] = 0.0
-                mesh["coordsets/coords/origin/y"] = self.par_rank * self.yres * self.dx
-                mesh["coordsets/coords/spacing/dx"] = self.dx
-                mesh["coordsets/coords/spacing/dy"] = self.dx
-            else: # self.MeshType in ('structured', 'unstructured'):
-                mesh["coordsets/coords/type"] = "explicit"
-                mesh["coordsets/coords/values/x"].set_external(self.xc.ravel())
-                mesh["coordsets/coords/values/y"].set_external(self.yc.ravel())
-            mesh["topologies/mesh/type"] = self.MeshType
-            mesh["topologies/mesh/coordset"] = "coords"
-
-            if self.MeshType == "structured":
-                mesh["topologies/mesh/elements/dims/i"] = np.int32(self.xres + 1)
-                mesh["topologies/mesh/elements/dims/j"] = np.int32(self.yres + 1)
-
-            if self.MeshType == "unstructured":
-                mesh["topologies/mesh/elements/shape"] = "quad"
-                mesh["topologies/mesh/elements/connectivity"].set_external(self.connectivity)
-
-        # create a vertex associated field called "temperature"
-            mesh["fields/temperature/association"] = "vertex"
-            mesh["fields/temperature/topology"] = "mesh"
-        # set_external does not handle multidimensional numpy arrays or
-        # multidimensional complex strided views into numpy arrays.
-        # Views that are effectively 1D-strided are supported.
-            mesh["fields/temperature/values"].set_external(self.v.ravel())
-
-        # create a vertex associated field called "point_ghosts"
-            mesh["fields/vtkGhostType/association"] = "vertex"
-            mesh["fields/vtkGhostType/topology"] = "mesh"
-            mesh["fields/vtkGhostType/values"].set_external(self.ghosts.ravel())
-
-        # make sure the mesh we created conforms to the blueprint
-            verify_info = conduit.Node()
-            if not conduit.blueprint.mesh.verify(mesh, verify_info):
-                print("Heat mesh verify failed!")
-            else:
-                if self.verbose and self.iteration == 1:
-                    print(mesh)
-
-            state = exec_params["catalyst/state"]
+            state = self.exec_params["catalyst/state"]
             state["timestep"] = self.iteration
             state["time"] = self.iteration * 0.1
-            catalyst.execute(exec_params)
+            catalyst.execute(self.exec_params)
 
     def initialize_catalyst(self):
         """Creates a Conduit node """

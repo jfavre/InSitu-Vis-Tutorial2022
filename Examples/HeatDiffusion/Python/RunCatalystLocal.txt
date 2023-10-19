@@ -1,3 +1,3 @@
 export CATALYST_IMPLEMENTATION_NAME=paraview
 export CATALYST_IMPLEMENTATION_PATHS=/local/apps/ParaView/dev/lib/catalyst
-. ~/pvdev.sh
+. ~/pv511.2.sh
