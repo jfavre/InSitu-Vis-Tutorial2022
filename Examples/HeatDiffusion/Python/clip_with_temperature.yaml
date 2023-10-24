@@ -1,0 +1,26 @@
+# an example of clipping the geometry by thresholding on the temperature field
+-
+  action: "add_pipelines"
+  pipelines:
+    pl1:
+      f1:
+        type: "clip_with_field"
+        params:
+          field: "temperature"
+          clip_value: .5
+          invert: false
+-
+  action: "add_scenes"
+  scenes:
+    s1:
+      plots:
+        p1:
+          pipeline: "pl1"
+          type: "pseudocolor"
+          field: "temperature"
+        p2:
+          type: "mesh"
+      renders: 
+        r1: 
+          image_prefix: "temperature-par.%04d"
+

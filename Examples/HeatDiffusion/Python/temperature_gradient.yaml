@@ -1,0 +1,30 @@
+# an example of plotting the magnitude of the gradient of the temperature field
+-
+  action: "add_pipelines"
+  pipelines:
+    pl1:
+      f1:
+        type: "gradient"
+        params:
+          field: "temperature"
+          output_name: "temp_gradient"
+          use_cell_gradient: "false"
+      f2:
+        type: "vector_magnitude"
+        params:
+          field: "temp_gradient"
+          output_name: "mag"
+-
+  action: "add_scenes"
+  scenes:
+    s1:
+      plots:
+        p1:
+          pipeline: "pl1"
+          type: "pseudocolor"
+          field: "mag"
+        p2:
+          type: "mesh"
+      renders:
+        r1:
+          image_prefix: "temperature-gradient.%04d"
