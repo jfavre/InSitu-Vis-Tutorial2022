@@ -50,7 +50,7 @@ class Simulation:
         self.rmesh_dims = [self.yres + 2, self.xres + 2]
         print("Rank ", self.par_rank, ": dimensions = ", self.rmesh_dims)
         self.v = np.zeros(self.rmesh_dims)  # includes 2 ghosts
-        self.ghosts = np.zeros(self.rmesh_dims)
+        self.ghosts = np.zeros(self.rmesh_dims,  dtype=np.ubyte)
         self.vnew = np.zeros([self.yres, self.xres])
         self.set_initial_bc()
 
@@ -154,10 +154,13 @@ class ParallelSimulation_With_Ascent(Simulation):
             self.mesh["coordsets/coords/type"] = self.MeshType
             self.mesh["coordsets/coords/dims/i"] = self.xres + 2
             self.mesh["coordsets/coords/dims/j"] = self.yres + 2
+            #self.mesh["coordsets/coords/dims/k"] = 1
             self.mesh["coordsets/coords/origin/x"] = 0.0
             self.mesh["coordsets/coords/origin/y"] = self.par_rank * self.yres * self.dx
+            #self.mesh["coordsets/coords/origin/z"] = 0.0
             self.mesh["coordsets/coords/spacing/dx"] = self.dx
             self.mesh["coordsets/coords/spacing/dy"] = self.dx
+            #self.mesh["coordsets/coords/spacing/dz"] = self.dx
         elif self.MeshType == "rectilinear":
             xc = np.linspace(0, 1, self.xres + 2)
             y_min = (self.par_rank * self.yres) * self.dx
@@ -230,7 +233,6 @@ class ParallelSimulation_With_Ascent(Simulation):
 
         # declare a scene (s1) to render the dataset
         self.scenes = add_act["scenes"]
-        # our first scene (named 's1') will render the field 'temperature'
         self.scenes["s1/plots/p1/type"] = "pseudocolor"
         self.scenes["s1/plots/p1/field"] = "temperature"
         # add a second plot to draw the grid lines
