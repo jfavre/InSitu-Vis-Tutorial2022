@@ -318,7 +318,7 @@ parser.add_argument("-f", "--frequency", type=int, default=50,
                     help="How often should the Ascent script be executed in situ processing.")
 parser.add_argument("-d", "--dir", type=str,
                     help="path to a directory where to dump the Blueprint output",
-                    default="/dev/shm/")
+                    default=".")
 parser.add_argument("-n", "--noinsitu",
                     help="toggle the use of the in-situ vis coupling with Ascent",
                     action='store_false')  # on/off flag)

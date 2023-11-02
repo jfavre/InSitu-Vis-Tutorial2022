@@ -1,6 +1,6 @@
 import os
-basename = "/tmp" #os.getenv('SCRATCH')
-basename += '/Catalyst/'
+
+basename = './'
 #### import the simple module from the paraview
 from paraview.simple import *
 #### disable automatic camera reset on 'Show'
