@@ -33,14 +33,14 @@ contour1.ComputeScalars = 1
 contour1.Isosurfaces = [i*0.1 for i in range(11)]
 contour1.PointMergeMethod = 'Uniform Binning'
 
-pid = ProcessIdScalars(Input=contour1)
+pid = GenerateProcessIds(Input=contour1)
 pid.UpdatePipeline()
 
 contour1Display = Show(pid, renderView1)
 contour1Display.Representation = 'Surface'
 contour1Display.LineWidth = 2
-ColorBy(contour1Display, ['POINTS', 'ProcessId'])
-processIdLUT = GetColorTransferFunction('ProcessId')
+ColorBy(contour1Display, ['POINTS', 'PointProcessIds'])
+processIdLUT = GetColorTransferFunction('PointProcessIds')
 processIdLUT.RescaleTransferFunction(0.0, 3.0)
 
 ResetCamera()
